@@ -19,15 +19,7 @@ dat <- read.csv("PhragSurvey2017to2022.csv")
 head(dat)
 
 
-tidydat <- pivot_longer(dat,names_to="Species",
-                        values_to="Abundance",Phragmites.australis:Spartina.patens)
-
-head(tidydat)
-
-tidydat$fTransect <- factor(tidydat$Transect)
-
-
-mymeans<-tidydat %>%
+mymeans<-dat %>%
   mutate(Site=factor(Site,
                         levels=c("Pearl River", "Big Branch","Barataria","Bayou Sauvage"
                                  ))) %>%
@@ -35,7 +27,7 @@ mymeans<-tidydat %>%
                      levels=c("Phragmites", "Transition","Native"
                      ))) %>%
   group_by(Site, Transect, Year)%>%
-  summarise(mean=mean(Abundance),se=std.error(Abundance)) %>%
+  summarise(mean=mean(Phragmites.australis, na.rm = TRUE),se=std.error(Phragmites.australis)) %>%
   filter(!is.na(Site)) %>%
   filter(!is.na(Transect))
 
