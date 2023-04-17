@@ -23,7 +23,7 @@ PhragData_narm <- PhragData %>%
 
 # Summarize based on Site and Transect. We will ignore year for now since
 # I am mostly interested in the relationship independent of year. 
-install.packages("plotrix") # for std.error() function
+#install.packages("plotrix") # for std.error() function
 library("plotrix")
 
 # Having trouble with mutate, change Site & transect to a factor manually
@@ -59,4 +59,29 @@ plot2 <- ggplot(data = PhragData_meansWatDep, aes(x=Transect,y=mean, fill=Site))
 library(gridExtra)
 
 grid.arrange(plot1, plot2, ncol=2)
+
+
+#### Ordination Plot ----
+# Let's do Constrained Ordination - we want to test for the effect of a 
+# treatment on species composition. We'll probably do a dbRDA.
+
+# First, well need to pivot our plant species into one species column
+# Columns 11-74 are species (some unknown)
+
+PhragData_ord <- PhragData_narm %>% 
+  pivot_longer(cols = Phragmites.australis:Vigna.luteola, 
+               names_to = "Species", 
+               values_to = "Abundance")
+
+install.packages("vegan")
+library(vegan)
+
+Phrag_dbrda <- dbrda(PhragData_ord$Abundance~pH+Salinity15cmppt+WaterDepthcm+
+                     Biomass+Litter,
+                     distance="bray",na.action = na.exclude,data=PhragData_ord)
+
+
+# Wot u plot, mate
+library(ggplot2)
+library(ggrepel)
 
