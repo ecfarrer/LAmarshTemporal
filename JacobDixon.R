@@ -1,4 +1,5 @@
 # Jacob Dixon's code
+setwd("C:/Users/The_D/OneDrive/Documents/LAmarshTemporal")
 
 install.packages("gitcreds")
 library(gitcreds)
@@ -17,7 +18,7 @@ PhragData <- read.csv("PhragSurvey2017to2022.csv")
 # Remove NAs and Abandoned sites
 PhragData_narm <- PhragData %>%
   filter(!is.na(WaterDepthcm), !is.na(Phragmites.australis),
-         !is.na(Site), !is.na(Transect),
+         !is.na(Site), !is.na(Transect), !is.na(pH),
          Site!="LUMCON 1", Site!="LUMCON 2", 
          Site!="Fontainebleau", Site!="Turtle Cove")
 
@@ -48,7 +49,8 @@ plot1 <- ggplot(data = PhragData_meanPhrag, aes(x=Transect,y=mean, fill=Site)) +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.25) +
   facet_wrap(~Site,scales = "free_x")
 
-plot2 <- ggplot(data = PhragData_meansWatDep, aes(x=Transect,y=mean, fill=Site)) +
+plot2 <- ggplot(data = PhragData_meansWatDep, 
+  aes(x=Transect,y=mean, fill=Site)) +
   geom_bar(stat = "identity") +
   labs(x = "Transect",y="Water Depth (cm)")+
   ylim(0,23) + theme(legend.position = "none")  +
@@ -65,23 +67,87 @@ grid.arrange(plot1, plot2, ncol=2)
 # Let's do Constrained Ordination - we want to test for the effect of a 
 # treatment on species composition. We'll probably do a dbRDA.
 
-# First, well need to pivot our plant species into one species column
+# We can use PhragData_narm - we'll need a data frame with just the species
+# as a row with column of abundance data.
 # Columns 11-74 are species (some unknown)
 
-PhragData_ord <- PhragData_narm %>% 
-  pivot_longer(cols = Phragmites.australis:Vigna.luteola, 
-               names_to = "Species", 
-               values_to = "Abundance")
+spec <- PhragData_narm[,11:74]
+envir <- PhragData_narm[,1:10]
 
-install.packages("vegan")
+#install.packages("vegan")
 library(vegan)
 
-Phrag_dbrda <- dbrda(PhragData_ord$Abundance~pH+Salinity15cmppt+WaterDepthcm+
-                     Biomass+Litter,
-                     distance="bray",na.action = na.exclude,data=PhragData_ord)
+Phrag_dbrda <- capscale(spec~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter, 
+                     data=envir,distance="bray",na.action = na.exclude)
 
+summary(Phrag_dbrda)
 
-# Wot u plot, mate
+# Let's Plot
+# "Ugly" Plot
+plot(Phrag_dbrda)
+
+# Time for serious plotting. Following Lecture14script from class.
 library(ggplot2)
 library(ggrepel)
+
+# Looks like PhragData_narm but with dbRDA1&2 scores
+site_scores <- data.frame(cbind(envir,scores(Phrag_dbrda)$site,
+                                labels=rownames(scores(Phrag_dbrda)$site)))
+
+# CAP 1 & 2 scores for each species
+species_scores <- data.frame(scores(Phrag_dbrda)$species,
+                           labels=rownames(scores(Phrag_dbrda)$species))
+
+# dbRDA values for each environmental variable
+reg_scores <- data.frame(scores(Phrag_dbrda,display="bp"),
+                       labels=rownames(scores(Phrag_dbrda,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 ()") +
+  ylab("RDA 2 ()") +  
+  geom_text(data=site_scores, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scores, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scores, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scores, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scores,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scores, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+#### Ordination: Extra Stuff ----
+# Adjusted R2 vales for the dbRDA
+RsquareAdj(Phrag_dbrda)
+
+# Permutation tests (PERMANOVA)
+anova(Phrag_dbrda, permutations = 1000)
+
+anova(Phrag_dbrda, by = "margin",permutations=1000)
+
+ 
+adonis2(spec~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter,
+        data=envir,distance="bray", by="margin", permutations=1000, 
+        na.action = na.fail) # Error here, not sure how to fix.
+
+
+# Forward selection
+Phrag_dbrda <- capscale(spec~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter, 
+                        data=envir,distance="bray",na.action = na.exclude)
+
+stepf <- ordistep(capscale(spec~1,distance="bray",data=envir), 
+                  scope=formula(Phrag_dbrda),direction="both", Pin=.01, Pout=.05,
+                  permutations=1000, data=envir) 
+            # More errors, back to the drawing board
+
 
