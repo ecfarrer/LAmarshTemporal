@@ -5,7 +5,7 @@ library(ggplot2)
 Phragmites <- read.csv("C:/Users/mac/Downloads/LAmarshTemporal/PhragSurvey2017to2022.csv",stringsAsFactors = T)
 Phrag_TIME <- Phragmites %>%
   filter(!Phragmites$Site %in% c("Turtle Cove", "Fontainebleau", "LUMCON 1", "LUMCON 2"),
-         !is.na(pH), !is.na(Salinity15cmppt)) 
+         !is.na(pH))
 
 #pH Over Time by Transect and Site
 Phrag_pH <- Phrag_TIME %>%
