@@ -71,7 +71,7 @@ ggplot(Native_mymeans,aes(x=Year,y=mean,fill=Site))+
   labs(x = "Year",y="Biomass (g/400cm2)")+
   geom_bar(stat="identity") +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2)+
-  facet_wrap(~Site, scales = "free")+
+  facet_wrap(~Site, scales = "fixed")+
   ggtitle("Native Transects")
 
 Phragmites_mymeans<-Phrag %>%
@@ -82,7 +82,7 @@ ggplot(Phragmites_mymeans,aes(x=Year,y=mean,fill=Site))+
   labs(x = "Year",y="Biomass (g/400cm2)")+
   geom_bar(stat="identity") +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2)+
-  facet_wrap(~Site, scales = "free")+
+  facet_wrap(~Site, scales = "fixed")+
   ggtitle("Phragmites Transects")
 
 Transition_mymeans<-Transition %>%
@@ -93,5 +93,7 @@ ggplot(Transition_mymeans,aes(x=Year,y=mean,fill=Site))+
   labs(x = "Year",y="Biomass (g/400cm2)")+
   geom_bar(stat="identity") +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2)+
-  facet_wrap(~Site, scales = "free")+
+  facet_wrap(~Site, scales = "fixed")+
   ggtitle("Transition Transects")
+
+
