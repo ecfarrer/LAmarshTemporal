@@ -19,30 +19,22 @@ dat <- read.csv("PhragSurvey2017to2022.csv")
 head(dat)
 
 
-plot(dat$Phragmites.australis ~ dat$Salinity15cmppt, xlab = "salinity", ylab = "abundance")
-
-tidydat <- pivot_longer(dat,names_to="Species",
-                        values_to="Abundance",Phragmites.australis:Spartina.patens)
-
-tidydat <- tidydat %>%
-  filter(!is.na(Salinity15cmppt)) %>%
-  filter(!is.na(Abundance))
-
-head(tidydat)
-
-tidydat$fTransect <- factor(tidydat$Transect)
-
-
-mymeans<-tidydat %>%
-  mutate(Species=factor(Species,
-                        levels=c("Phragmites.australis", "Eleocharis.sp.","Ipomoea.sagittata","Schoenoplectus.americanus"
-                                 ,"Spartina.patens", "Sagittaria.lancifolia"))) %>%
-  group_by(Species, Salinity15cmppt)%>%
-  summarise(mean=mean(Abundance),se=std.error(Abundance)) %>%
-  filter(!is.na(Species))
+mymeans<-dat %>%
+  mutate(Site=factor(Site,
+                        levels=c("Pearl River", "Big Branch","Barataria","Bayou Sauvage"
+                                 ))) %>%
+  mutate(Transect=factor(Transect,
+                     levels=c("Phragmites", "Transition","Native"
+                     ))) %>%
+  group_by(Site, Transect, Year)%>%
+  summarise(mean=mean(Phragmites.australis, na.rm = TRUE),se=std.error(Phragmites.australis)) %>%
+  filter(!is.na(Site)) %>%
+  filter(!is.na(Transect))
 
 
-ggplot(mymeans,aes(x=Salinity15cmppt,y=mean,color=Species))+
+ggplot(mymeans,aes(x=Year,y=mean,color=Transect))+
   geom_point(stat="identity") + 
+  geom_line()+
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.25)+
-  facet_wrap(~Species, scales="free")
+  labs(x = "Year",y="Abundance")+
+  facet_wrap(~Site, scales="free")
