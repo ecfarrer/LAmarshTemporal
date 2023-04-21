@@ -125,6 +125,9 @@ ggplot() +
                   colour="black",size=3)+
   coord_fixed(ratio=1)
 
+# There is a lot of data here - too many species. See the Ordination plot where
+# we use the 13 most abundant species 
+
 
 #### Ordination: Extra Stuff ----
 # Adjusted R2 vales for the dbRDA
@@ -146,8 +149,49 @@ Phrag_dbrda <- capscale(spec~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter,
                         data=envir,distance="bray",na.action = na.exclude)
 
 stepf <- ordistep(capscale(spec~1,distance="bray",data=envir), 
-                  scope=formula(Phrag_dbrda),direction="both", Pin=.01, Pout=.05,
-                  permutations=1000, data=envir) 
+                  scope=formula(Phrag_dbrda),direction="both", 
+                  Pin=.01, Pout=.05, permutations=1000, data=envir) 
             # More errors, back to the drawing board
 
 
+#### Assessing Abundance for all Species ----
+spec <- PhragData_narm[,11:74]  # all of our species
+spec_sort <- spec               # create copy of data frame to use in for loop
+
+for(i in 1:ncol(spec)) {
+  spec_sort[,i] <- sort(spec[,i], decreasing = T)
+}
+
+top_abun <- spec_sort[1,]    # Selects the top scores and names
+top_abun1 <- pivot_longer(top_abun, names_to="Species", values_to="Abundance",
+             Phragmites.australis:Vigna.luteola)  # pivot for easier sorting
+top_abun1 <- arrange(top_abun1, Abundance) # sort by Abundance (ascending)
+top_spec <- top_abun1[52:64,]   # select the top ones by row number
+
+# Probably a smoother way to do this but some was also for visualization
+
+#### Ordination Plot of ~13 Most Abundant Species ----
+spec <- PhragData_narm[,11:74]    # again, take all of the species
+top_species_string <- top_spec[[1]]   # here is our top species in a string
+spec.top <- select(spec, all_of(top_species_string)) 
+                                    # use string to select from all species
+#spec.top <- spec.top %>%
+#  filter(!is.na(Phragmites.australis), !is.na(Bolboschoenus.robustus),
+#         !is.na(Spartina.cynosuroides), !is.na(Polygonum.punctatum),
+#         !is.na(Juncus.sp.), !is.na(Leersia.hexandra), !is.na(Aster.subulatus),
+#         !is.na(Schoenoplectus.americanus), !is.na(Juncus.roemerianus),
+#         !is.na(Lemna.sp.), !is.na(Bacopa.monnieri), !is.na(Spartina.patens),
+#         !is.na(Eleocharis.sp.))
+
+envir <- PhragData_narm[,1:10]
+
+#envir <- envir %>%
+#  filter(!is.na(pH), !is.na(Salinity15cmppt), !is.na(WaterDepthcm),!is.na(Biomass),
+#         !is.na(Litter))
+
+library(vegan)
+
+Phrag_dbrda.top <- capscale(spec.top~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter, 
+                        data=envir,distance="bray",na.action = na.exclude)
+# Current Error: Error in if (max(X) >= 4 + .Machine$double.eps) { : missing 
+# value where TRUE/FALSE needed. Filtering NAs for both data frames did not work.
