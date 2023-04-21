@@ -191,7 +191,8 @@ ggplot(site_scoresBP) +
   xlab("RDA 1 (%)") +
   ylab("RDA 2 (%)") +  
   theme_classic()+
-  coord_fixed(ratio=1)+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
   geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
@@ -221,7 +222,8 @@ ggplot(site_scoresBS) +
   xlab("RDA 1 (%)") +
   ylab("RDA 2 (%)") +  
   theme_classic()+
-  coord_fixed(ratio=1)+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
   geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
