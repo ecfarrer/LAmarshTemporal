@@ -1,6 +1,6 @@
-install.packages("gitcreds")
+#install.packages("gitcreds")
 library(gitcreds)
-gitcreds_set()
+#gitcreds_set()
 library(tidyverse)
 library(dplyr)
 library(plotrix)
