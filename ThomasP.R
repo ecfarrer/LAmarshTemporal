@@ -269,8 +269,6 @@ summary(model1TAneg)
 #over dispersion is about ~1 now. This is the best one to use.
 #use package lme4 package. Add random effects to negative distributions
 
-hist()
-
 
 
 glm.nb(
@@ -327,5 +325,10 @@ model1TA <- lme(
 
 #spatial model
 
+model1SA <- gls(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  correlation=corSpher(form = ~ Lat+Long|Year),
+  data = SpatialData2)
 
-
+anova(model1, model1TA, model1SA)
+#model1SA is the best model, making spatial correlation more important
