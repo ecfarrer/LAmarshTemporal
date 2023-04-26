@@ -10,6 +10,7 @@ gitcreds_set()
 install.packages("tidyverse") # for piping protocols (%>%)
 library(tidyverse)
 library(ggplot2)
+library(vegan)
 
 # Read in data
 PhragData <- read.csv("PhragSurvey2017to2022.csv")
@@ -44,7 +45,7 @@ PhragData_meansWatDep <- PhragData_narm %>%
 # Plot creation and plot combination
 plot1 <- ggplot(data = PhragData_meanPhrag, aes(x=Transect,y=mean, fill=Site)) +
   geom_bar(stat = "identity") +
-  labs(x = "Transect",y="Phrag Abundance")+
+  labs(x = "Transect",y="Phrag Abundance") +
   ylim(0,17) + theme(legend.position = "none")  +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.25) +
   facet_wrap(~Site,scales = "free_x")
@@ -63,7 +64,7 @@ library(gridExtra)
 grid.arrange(plot1, plot2, ncol=2)
 
 
-#### Ordination Plot ----
+#### Ordination Plot (all species) ----
 # Let's do Constrained Ordination - we want to test for the effect of a 
 # treatment on species composition. We'll probably do a dbRDA.
 
@@ -229,11 +230,123 @@ ggplot() +
   coord_fixed(ratio=1)
 
 
-#!# Under Construction #!#
-
-### Organize by site 
-
-### Picking by frequency vs abundance 
-
 #### PERMANOVA on Ordination ----
 # Can we drop some non-important variables?
+
+anova(Phrag_dbrda.top, by="margin", permutations = 1000)
+           # all variables are significant! 
+
+#### Ordination Plot of 12 Most frequently Observed Species ----
+
+spec_f <- spec[colSums(spec>0) > 20] # thanks Emily!
+ind<-rowSums(spec_f)>0
+spec_f2 <- spec_f[ind,]
+envirF<-envir[ind,]
+
+Phrag_dbrda.freq <- capscale(spec_f2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                             Litter, data=envirF,distance="bray",
+                             na.action = na.exclude)
+
+# Quick peek and onto big plot
+summary(Phrag_dbrda.freq) # CAP1 - 14.9%; CAP2 - 1.6%
+plot(Phrag_dbrda.freq)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scoresF <- data.frame(cbind(envirF,scores(Phrag_dbrda.freq,scaling = 2)$site,
+                                 labels=rownames(scores(Phrag_dbrda.freq)$site)))
+species_scoresF <- data.frame(scores(Phrag_dbrda.freq, scaling = 2)$species,
+                              labels=rownames(scores(Phrag_dbrda.freq)$species))
+reg_scoresF <- data.frame(scores(Phrag_dbrda.freq,display="bp", scaling = 2),
+                          labels=rownames(scores(Phrag_dbrda.freq,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (14.9%)") +
+  ylab("RDA 2 (1.6%)") +  
+  #ylim(c(-2.5,2.5)) +
+  #xlim(c(-2.5,6)) +
+  geom_text(data=site_scoresF, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresF, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresF, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresF, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresF,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresF, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+## PERMANOVA check
+anova(Phrag_dbrda.freq, by="margin", permutations = 1000) 
+# all variables significant
+
+
+#### Ordination by site by year - 2017-2022 ---- 
+# Try Pearl River first
+# We will do most frequently observed species in each year
+### 2017
+
+PhragData_P17 <- PhragData_narm[grep("2017", PhragData_narm$Year),]
+PhragData_P17 <- PhragData_P17[grep("Pearl River", PhragData_P17$Site),]
+
+specP17 <- PhragData_P17[,11:74]
+envP17 <- PhragData_P17[,1:10]
+
+# 21 observations in one year - 3 observations is a 14.3% freq.
+spec_P <- specP17[colSums(specP17>0) > 3]  
+ind <- rowSums(spec_P)>0
+spec_P2 <- spec_P[ind,]
+env_P <- envP17[ind,]
+
+Phrag_dbrda.P17 <- capscale(spec_P2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                            Litter, data=env_P,distance="bray",
+                            na.action = na.exclude)
+
+# Quick peek and onto big plot
+summary(Phrag_dbrda.freq) # CAP1 - 14.9%; CAP2 - 1.6%
+plot(Phrag_dbrda.freq)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scoresP17 <- data.frame(cbind(env_P,scores(Phrag_dbrda.P17,scaling = 2)$site,
+                                 labels=rownames(scores(Phrag_dbrda.P17)$site)))
+species_scoresP17 <- data.frame(scores(Phrag_dbrda.P17, scaling = 2)$species,
+                              labels=rownames(scores(Phrag_dbrda.P17)$species))
+reg_scoresP17 <- data.frame(scores(Phrag_dbrda.P17,display="bp", scaling = 2),
+                          labels=rownames(scores(Phrag_dbrda.P17,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (14.9%)") +
+  ylab("RDA 2 (1.6%)") +  
+  ggtitle("Pearl River 2017") +
+  geom_text(data=site_scoresP17, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresP17, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresP17, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresP17, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresP17,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresP17, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
