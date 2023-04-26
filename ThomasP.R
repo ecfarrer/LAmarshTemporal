@@ -315,6 +315,17 @@ acf(model1resSA)
 
 
 #compare regular, spatial model, temporal model together
-#acf was for spatial correlation
+
+#Reg Model
+model1 <- lme(Phragmites.australis ~ Site + Year + Transect + Year*Transect, random = ~1|Plot, data = phragy)
+
+#temporal model
+model1TA <- lme(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  correlation = corAR1(form =~ Year),
+  random = ~1|Plot, data = phragy)
+
+#spatial model
+
 
 
