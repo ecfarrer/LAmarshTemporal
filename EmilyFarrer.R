@@ -1,8 +1,12 @@
 ##### Emily's code #####
 
+dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2022.csv",stringsAsFactors = T,row.names=1)
+
 dat2<-dat%>%
-  filter(Site%in%c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))
+  filter(Site%in%c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))%>%
+  mutate(Yearfac=as.factor(Year))
 dat2$Transect<-factor(dat2$Transect,levels=c("Native","Transition","Phragmites"))
+  
 
 
 
@@ -157,3 +161,134 @@ ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
   facet_wrap(vars(Site),strip.position = "top",scales="free")
 #geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
 dev.off()
+
+
+
+
+
+
+##### Ordinations #####
+
+##Barataria all years
+datBP<-dat2%>%
+  filter(Site=="Barataria"&Year%in%c(2017,2018,2019,2020,2021,2022))
+speBP<-datBP%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Barataria
+speBPb<-speBP[colSums(speBP>0) > 0]
+envBP<-datBP%>%
+  select(Year:DeadPhragStems,Yearfac)
+
+#include year?
+dbrdaBP<-capscale(speBPb~Transect*Yearfac,distance="bray",data=envBP)
+anova(dbrdaBP,by="margin")
+
+site_scoresBP <- data.frame(cbind(envBP,scores(dbrdaBP)$sites,labels=rownames(scores(dbrdaBP)$sites)))
+
+ggplot(site_scoresBP) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
+  facet_wrap(~Year)
+
+
+##Bayou Sauvage all years, needed to take out plots that had zero plants
+datBS<-dat2%>%
+  filter(Site=="Bayou Sauvage"&Year%in%c(2017,2018,2019,2020,2021,2022))%>%
+  filter(!is.na(Phragmites.australis))%>%
+  filter(NatAbun+Phragmites.australis>0)
+speBS<-datBS%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Bayou Sauvage
+speBSb<-speBS[colSums(speBS>0) > 0]
+envBS<-datBS%>%
+  select(Year:DeadPhragStems,Yearfac)
+
+#include year?
+dbrdaBS<-capscale(speBSb~Transect*Yearfac,distance="bray",data=envBS)
+anova(dbrdaBS,by="margin")
+
+site_scoresBS <- data.frame(cbind(envBS,scores(dbrdaBS)$sites,labels=rownames(scores(dbrdaBS)$sites)))
+
+ggplot(site_scoresBS) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
+  facet_wrap(~Year)
+
+
+
+### old ordination stuff
+head(dat2)
+
+datBP2017<-dat2%>%
+  filter(Site=="Barataria"&Year==2017)
+speBP2017<-datBP2017%>%
+  select(Phragmites.australis:Vigna.luteola)
+speBP2017b<-speBP2017[colSums(speBP2017>0) > 0]
+envBP2017<-datBP2017%>%
+  select(Year:DeadPhragStems)
+
+dbrdaBP2017<-capscale(speBP2017b~Transect,distance="bray",data=envBP2017)
+site_scoresBP2017 <- data.frame(cbind(envBP2017,scores(dbrdaBP2017)$sites,labels=rownames(scores(dbrdaBP2017)$sites)))
+#species_scores<-data.frame(scores(mydbrda)$species,labels=rownames(scores(mydbrda)$species))
+#reg_scores<-data.frame(scores(mydbrda,display="bp"),labels=rownames(scores(mydbrda,display="bp")))
+
+ggplot(site_scoresBP2017) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  coord_fixed(ratio=1)+
+  geom_point(data=site_scoresBP2017, aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)
+
+
+datBP2018<-dat2%>%
+  filter(Site=="Barataria"&Year==2018)
+speBP2018<-datBP2018%>%
+  select(Phragmites.australis:Vigna.luteola)
+speBP2018b<-speBP2018[colSums(speBP2018>0) > 0]
+envBP2018<-datBP2018%>%
+  select(Year:DeadPhragStems)
+
+dbrdaBP2018<-capscale(speBP2018b~Transect,distance="bray",data=envBP2018)
+site_scoresBP2018 <- data.frame(cbind(envBP2018,scores(dbrdaBP2018)$sites,labels=rownames(scores(dbrdaBP2018)$sites)))
+
+ggplot(site_scoresBP2018) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  coord_fixed(ratio=1)+
+  geom_point(data=site_scoresBP2018, aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)
+
+
+
+# theme(legend.position = "none")+
+#   scale_color_manual(values = c("#56ae6c", "#8960b3"),labels = c("Native", "Phragmites"),name = "Invasion")+
+#   scale_fill_manual(values = c("#56ae6c", "#8960b3"),labels = c("Native", "Phragmites"),name = "Invasion")+
+
+
+
+
+
+
+
+
+

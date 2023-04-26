@@ -125,6 +125,9 @@ ggplot() +
                   colour="black",size=3)+
   coord_fixed(ratio=1)
 
+# There is a lot of data here - too many species. See the Ordination plot where
+# we use the 13 most abundant species 
+
 
 #### Ordination: Extra Stuff ----
 # Adjusted R2 vales for the dbRDA
@@ -146,8 +149,91 @@ Phrag_dbrda <- capscale(spec~pH+Salinity15cmppt+WaterDepthcm+Biomass+Litter,
                         data=envir,distance="bray",na.action = na.exclude)
 
 stepf <- ordistep(capscale(spec~1,distance="bray",data=envir), 
-                  scope=formula(Phrag_dbrda),direction="both", Pin=.01, Pout=.05,
-                  permutations=1000, data=envir) 
+                  scope=formula(Phrag_dbrda),direction="both", 
+                  Pin=.01, Pout=.05, permutations=1000, data=envir) 
             # More errors, back to the drawing board
 
 
+#### Assessing Abundance for all Species ----
+spec <- PhragData_narm[,11:74]  # all of our species
+spec_sort <- spec               # create copy of data frame to use in for loop
+
+for(i in 1:ncol(spec)) {
+  spec_sort[,i] <- sort(spec[,i], decreasing = T)
+}
+
+top_abun <- spec_sort[1,]    # Selects the top scores and names
+top_abun1 <- pivot_longer(top_abun, names_to="Species", values_to="Abundance",
+             Phragmites.australis:Vigna.luteola)  # pivot for easier sorting
+top_abun1 <- arrange(top_abun1, Abundance) # sort by Abundance (ascending)
+top_spec <- top_abun1[52:64,]   # select the top ones by row number
+
+# Probably a smoother way to do this but some was also for visualization
+
+#### Ordination Plot of 13 Most Abundant Species ----
+envir <- PhragData_narm[,1:10]
+spec <- PhragData_narm[,11:74]    # again, take all of the species
+top_species_string <- top_spec[[1]]   # here is our top species in a string
+spec.top <- select(spec, all_of(top_species_string)) 
+                                    # use string to select from all species
+
+#"The issue is that you have some plots with no plants in them" - E. Farrer 
+ind<-rowSums(spec.top)>0
+spec.top2<-spec.top[ind,]
+envir2<-envir[ind,]
+#then use spec.top2 and envir2 in the ordination
+
+library(vegan)
+
+Phrag_dbrda.top <- capscale(spec.top2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                            Litter, data=envir2,distance="bray",
+                            na.action = na.exclude)
+
+# Summary and Plot
+summary(Phrag_dbrda.top)
+plot(Phrag_dbrda.top)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scores2 <- data.frame(cbind(envir2,scores(Phrag_dbrda.top,scaling = 2)$site,
+                                labels=rownames(scores(Phrag_dbrda.top)$site)))
+species_scores2 <- data.frame(scores(Phrag_dbrda.top, scaling = 2)$species,
+                             labels=rownames(scores(Phrag_dbrda.top)$species))
+reg_scores2 <- data.frame(scores(Phrag_dbrda.top,display="bp", scaling = 2),
+                         labels=rownames(scores(Phrag_dbrda.top,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (14.4%)") +
+  ylab("RDA 2 (1.7%)") +  
+  #ylim(c(-2.5,2.5)) +
+  #xlim(c(-2.5,6)) +
+  geom_text(data=site_scores2, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scores2, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scores2, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scores2, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scores2,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scores2, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+#!# Under Construction #!#
+
+### Organize by site 
+
+### Picking by frequency vs abundance 
+
+#### PERMANOVA on Ordination ----
+# Can we drop some non-important variables?
