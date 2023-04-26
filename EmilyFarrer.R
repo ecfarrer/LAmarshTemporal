@@ -6,7 +6,7 @@ dat2<-dat%>%
   filter(Site%in%c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))%>%
   mutate(Yearfac=as.factor(Year))
 dat2$Transect<-factor(dat2$Transect,levels=c("Native","Transition","Phragmites"))
-  
+dat2$Plot<-factor(dat2$Plot)
 
 
 
@@ -167,7 +167,11 @@ dev.off()
 
 
 
-##### Ordinations #####
+##### Plotting Ordinations #####
+
+#See the "RestrictedPermutationsforOrdinations.R" file for the statistical tests
+
+##### Ordination - Barataria #####
 
 ##Barataria all years
 datBP<-dat2%>%
@@ -179,10 +183,9 @@ speBPb<-speBP[colSums(speBP>0) > 0]
 envBP<-datBP%>%
   select(Year:DeadPhragStems,Yearfac)
 
-#include year?
-dbrdaBP<-capscale(speBPb~Transect*Yearfac,distance="bray",data=envBP)
-anova(dbrdaBP,by="margin")
 
+
+#plotting
 site_scoresBP <- data.frame(cbind(envBP,scores(dbrdaBP)$sites,labels=rownames(scores(dbrdaBP)$sites)))
 
 ggplot(site_scoresBP) + 
@@ -197,7 +200,23 @@ ggplot(site_scoresBP) +
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
 
+#Plot with facet wrap by transect, color by year
+ggplot(site_scoresBP) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Year),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Yearfac),level=.95)+
+  facet_wrap(~Transect)
 
+
+
+
+##### Ordination - Bayou Sauvage #####
 ##Bayou Sauvage all years, needed to take out plots that had zero plants
 datBS<-dat2%>%
   filter(Site=="Bayou Sauvage"&Year%in%c(2017,2018,2019,2020,2021,2022))%>%
@@ -213,6 +232,23 @@ envBS<-datBS%>%
 #include year?
 dbrdaBS<-capscale(speBSb~Transect*Yearfac,distance="bray",data=envBS)
 anova(dbrdaBS,by="margin")
+
+#got an error here that the design wasn't balanced. so trying to reduce the dataset to make it balanced. don't have 112, 113 in 2018, no 113 in 2019, 120 in 2020, 111 in 2022.
+#107,108,109,110,111,112,113 Phrag
+#114,115,116,117,118,119,120 Trans
+#121,122,123,124,125,126,127 Nat
+#107,108,109,110 Phrag
+#114,115,116,117,118,119 Trans
+#121,122,123,124,125,126,127 Nat
+ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,118,119,121,122,123,124,125,126,127))
+#ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,121,122,123,124))
+speBSc<-speBSb[ind,]
+envBSb<-envBS[ind,]
+
+dbrdaBSb <- capscale(speBSc ~ Yearfac + Yearfac:Transect + Condition(Plot), data = envBSb)
+(h <- how(within = Within(type = "none"), plots = Plots(strata = envBSb$Plot, type = "free"),nperm=999))
+anova(dbrdaBSb, permutations = h, model = "reduced") #reduced permutes the residuals of the model after Condition() is applied
+anova(dbrdaBSb, permutations = h, model = "reduced",by="terms") #I'm not sure about this, I'm not sure if we are testing the effect of year based on the permutation scheme
 
 site_scoresBS <- data.frame(cbind(envBS,scores(dbrdaBS)$sites,labels=rownames(scores(dbrdaBS)$sites)))
 
