@@ -8,6 +8,7 @@ library(nlme)
 library(MASS)
 library(gridExtra)
 
+options(contrasts = c("contr.helmert","contr.poly"))
 
 #Litter over time
 phragmain <- read.csv("PhragSurvey2017to2022.csv", stringsAsFactors = TRUE)
@@ -144,9 +145,8 @@ phragx <- phragmain %>%
   filter(!phragmain$Site %in% c('LUMCON 1', 'LUMCON 2', 'Fontainebleau', 'Turtle Cove'), !is.na(Phragmites.australis))
 
 #gls with year and transect
-gls.yt <- gls(Phragmites.australis ~ Year + Transect + Year*Transect, data = phragx)
-summary(gls.yt)
-
+gls.syt <- gls(Phragmites.australis ~ Site + Year + Transect + Year*Transect, data = phragx)
+summary(gls.syt)
 
 
 #glm with year and transect
@@ -154,12 +154,167 @@ phragy <- read.csv("DeleteX.csv", stringsAsFactors = TRUE)
 phragy <- phragy %>%
   filter(!phragmain$Site %in% c('LUMCON 1', 'LUMCON 2', 'Fontainebleau', 'Turtle Cove'), !is.na(Phragmites.australis))
 
-glm.yt <- glm(Litter ~ Year + Transect + Year*Transect,data = phragy)
-summary(glm.yt)
+glm.syt <- glm(Phragmites.australis ~ Site + Year + Transect + Year*Transect,data = phragy)
+summary(glm.syt)
 
 
 #lm with year and transect
 
-lm.yt <- lm(Litter ~ Year + Transect + Year*Transect,data = phragy)
-summary(lm.yt)
+lm.syt <- lm(Phragmites.australis ~ Site + Year + Transect + Year*Transect,data = phragy)
+summary(lm.syt)
+anova(lm.syt)
+
+
+
+# Random effects: Plot, 
+#lm with random
+
+lme.sytr <- lme(Phragmites.australis ~ Site + Year + Transect + Year*Transect, random = ~1|Plot, data = phragy)
+anova(lme.sytr, type = "marginal")
+summary(lme.sytr)
+
+anova(lme.sytr, lm.syt)
+#lme.sytr is better
+
+model1 <- lme.sytr
+
+
+
+#ModelValidation Notes
+#plot(data = phragy, phragy$Year, resid(phragy$Phragmites.australis))
+
+#Diversity is the new model
+#model validation needed
+
+#Look at lecture on correlation on autoregressive correlation on temporal autocorrelation
+#Lecture 8
+#Look at spatial correlation (Never did that)
+#look at la marsh repository (other one) that has the code for spatial autocorrelation
+# -> LamarshGradient2 :Phragabunbiomasslitter (Corsphere latlong) (Spatial correlation)
+#Example
+#Final stats model for manuscript
+#m1<-lme(phraus~MarshClassV*Transect2,random=~1|Site,correlation=corSpher(form = ~ Lat+Long),weights=varIdent(form=~1|MarshClassV.Transect),data=dat17phrag)
+#m2<-lme(phraus~MarshClassV*Transect2,random=~1|Site,correlation=corSpher(form = ~ Lat+Long),data=dat17phrag)#
+#anova(m1,m2) #var ident not significant
+#anova(m2,type="margin")
+#m1m<-as.data.frame(summary(emmeans(m2,~Transect2|MarshClassV)))
+
+
+
+
+#ModelValidation
+par(mfrow = c(1,2))
+fm1 <- fitted(model1)
+resid1 <- resid(model1, type = "normalized")
+hist(resid(model1, type = "normalized"))
+
+plot(fm1, resid1)
+plot(phragy$Transect, resid1)
+#non-normal distribution of residuals
+
+
+model1res <- resid(model1)
+model1res <- model1res[is.na(model1res)==F]
+acf(model1res)
+#High auto correlation?
+
+model1TA <- lme(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  correlation = corAR1(form =~ Year),
+  random = ~1|Plot, data = phragy)
+
+summary(model1TA)
+#results still significant even factoring for temporal autocorrelation
+
+#Testing spatial correlation
+#model1SA <- lme(
+#  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+#  correlation=corSpher(form = ~ Lat+Long),
+#  random = ~1|Plot, data = phragy)
+# is there latitude longitude data somewhere? Ask for specific location or use SITE?
+
+model1TApois <- glm(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  family = poisson, data = phragy)
+
+summary(model1TApois)
+
+#residual deviance = ~5 (Bad, should be ~1)
+
+#Do you have to analyze part of the data at once? (Not correct)
+#ggplot(data = phragy, aes(x = Year, y = Phragmites.australis) +
+#  geom_point()+
+#  geom_smooth(method='glm',method.args=list(family='poisson'))
+
+
+model1TApois <- glm(
+    Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+    family = poisson, data = phragy)
+
+drop1(model1TApois,.~., test = "Chi")
+
+model1TAquasi<- glm(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  family = quasipoisson, data = phragy)
+
+summary(model1TAquasi)
+
+#Over dispersion still about 5 
+
+
+model1TAneg<- glm.nb(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  link = "log", data = phragy)
+summary(model1TAneg)
+#over dispersion is about ~1 now. This is the best one to use.
+#use package lme4 package. Add random effects to negative distributions
+
+hist()
+
+
+
+glm.nb(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  link = "log", data = phragy)
+negplot <- resid(model1TAneg, type = "deviance")
+negplotpredict <- predict(model1TAneg, type = "link")
+
+par(mfrow = c(1,3))
+plot(negplot)
+plot(negplotpredict)
+#weird!
+
+
+
+#Actual Test for Spatial Correlation
+SpatialData <- read.csv("latlongPhragSurvey2017to2022.csv", stringsAsFactors = TRUE)
+
+SpatialData2 <- SpatialData %>%
+  filter(!phragmain$Site %in% c('LUMCON 1', 'LUMCON 2', 'Fontainebleau', 'Turtle Cove'), !is.na(Phragmites.australis))
+
+
+
+model1SA <- gls(
+  Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+  correlation=corSpher(form = ~ Lat+Long|Year),
+  data = SpatialData2)
+
+summary(model1SA)
+
+anova(model1SA, model1TA)
+
+model1resSA <- resid(model1SA)
+model1resSA <- model1res[is.na(model1res)==F]
+
+
+acf(model1resSA)
+#lag = meters
+    
+#use package lme4 package. Add random effects to negative distributions
+#figure out the negative bionimail distrbution
+
+
+#compare regular, spatial model, temporal model together
+#acf was for spatial correlation
+
 
