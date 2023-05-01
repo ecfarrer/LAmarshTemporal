@@ -1,5 +1,8 @@
 ##### Emily's code #####
 
+
+options(contrasts=c("contr.helmert","contr.poly"))
+
 dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2022.csv",stringsAsFactors = T,row.names=1)
 
 dat2<-dat%>%
@@ -7,7 +10,7 @@ dat2<-dat%>%
   mutate(Yearfac=as.factor(Year))
 dat2$Transect<-factor(dat2$Transect,levels=c("Native","Transition","Phragmites"))
 dat2$Plot<-factor(dat2$Plot)
-
+dat2$Site<-factor(dat2$Site,levels=c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))
 
 
 ##### Species abundances over time ######
@@ -183,16 +186,17 @@ speBPb<-speBP[colSums(speBP>0) > 0]
 envBP<-datBP%>%
   select(Year:DeadPhragStems,Yearfac)
 
-
+dbrdaBP <- capscale(speBPb ~ Transect*Yearfac, distance="bray",data = envBP)
 
 #plotting
 site_scoresBP <- data.frame(cbind(envBP,scores(dbrdaBP)$sites,labels=rownames(scores(dbrdaBP)$sites)))
 
+#export using png default
 ggplot(site_scoresBP) + 
   geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
   geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
-  xlab("RDA 1 (%)") +
-  ylab("RDA 2 (%)") +  
+  xlab("RDA 1 (6.4%)") +
+  ylab("RDA 2 (1.6%)") +  
   theme_classic()+
   theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
   #coord_fixed(ratio=1)+
@@ -324,6 +328,139 @@ ggplot(site_scoresBP2018) +
 
 
 
+
+
+
+###### lme models ######
+#distances are in lat/long degrees so 0.0001 is about 10m
+
+datp<-dat2%>%
+  filter(!is.na(Phragmites.australis))
+# datp<-dat2%>%
+#   filter(Transect%in%c("Phragmites","Transition"))
+
+model1 <- gls(
+  Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site,
+  data = datp)
+summary(model1)
+
+modelR <- lme(
+  Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site,
+  random=~1|Plot,data = datp)
+summary(modelR)
+
+modelT <- lme(
+  Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(modelT)
+
+modelS <- gls(
+  Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site,
+  correlation=corExp(form = ~ Lat+Long|Yearfac,nugget=T),#
+  data = datp)
+summary(modelS)
+plot(Variogram(modelS))
+
+#to see if coefficients are NA if you are getting a singularity error
+# test<-lm(Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect+Site*Yearfac+Site*Transect,data=dat2)
+# coef(test)
+
+anova(model1,modelR,modelT,modelS)
+
+anova(modelT,type="marginal")
+
+modelT2 <- lme(
+  Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site + Transect*Site*Yearfac,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(modelT2)
+anova(modelT2,type="marginal")
+
+
+
+#can't do this, plot is completely determined by lat/long so redundant?
+# modelS <- lme(
+#   Phragmites.australis ~ Site + Year + Transect + Year*Transect,
+#   correlation=corSpher(form = ~ Lat+Long|Year),#,nugget=T
+#   random=~1|Plot,data = datp)
+
+
+
+
+#sanity check, using 2017 only
+datp2<-dat2%>%
+  filter(is.na(Phragmites.australis)==F&Year==2017&Transect%in%c("Phragmites","Transition"))#&Site=="Big Branch"
+
+modelE <- gls(
+  Phragmites.australis ~ Transect*Site,
+  correlation=corExp(c(1.3,.4),form = ~ Lat+Long,nugget=T),#,nugget=T
+  data = datp2)
+summary(modelE)
+plot(Variogram(modelE),ylim=c(0,1.3), main = "Exponential Correlation")
+
+model1<-gls(
+  Phragmites.australis ~ Site  + Transect,
+  data=datp2)
+
+anova(model1,modelE)
+
+
+
+
+
+
+
+datp<-dat2%>%
+  filter(!is.na(Shannon))
+
+model1 <- gls(
+  NatShannon ~ Site + Yearfac + Transect + Yearfac*Transect+ Yearfac*Site + Transect*Site,
+  data = datp)
+summary(model1)
+
+modelR <- lme(
+  NatShannon ~ Site + Yearfac + Transect + Yearfac*Transect+ Yearfac*Site + Transect*Site,
+  random=~1|Plot,data = datp)
+
+modelS <- gls(
+  NatShannon ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Site*Transect,
+  correlation=corExp(form = ~ Lat+Long|Yearfac,nugget=T),#
+  data = datp)
+summary(modelS)
+plot(Variogram(modelS),ylim=c(0,1.2), main = "Spherical Correlation")
+
+modelT <- lme(
+  NatShannon ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Site*Transect,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(modelT)
+
+anova(model1,modelR,modelS,modelT)
+
+anova(modelT,type="marginal")
+
+#  weights = varExp(form =~ Year),
+modelT2 <- lme(
+  Shannon ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Site*Transect+Site*Transect*Yearfac,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(modelT2)
+anova(modelT2,type="marginal")
+
+plot(fitted(modelT2),resid(modelT2,type="normalized"))
+plot(datp$Year,resid(modelT2,type="normalized"))
+plot(datp$Site,resid(modelT2,type="normalized"))
+plot(datp$Transect,resid(modelT2,type="normalized"))
+hist(resid(modelT2,type="normalized"))
+
+#Tukey posthoc tests, need to take out unused levels of Site (see very top of code)
+library(multcomp)
+modelT2 <- lme(
+  Shannon ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Site*Transect+Site*Transect*Yearfac,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(glht(modelT2,linfct=mcp(Site="Tukey")))
 
 
 
