@@ -5,10 +5,12 @@ library(nlme)
 library(MASS)
 library(gridExtra)
 
+
 #Run models testing the effect of year (factor) and transect and year*transect on phrag abundance. AND a model with the effect of year (linear) and transect and year*transect on phrag abundance
 
 #Run models testing the effect of year (factor) and transect (and phrag abundance) and year*transect on phrag abundance. AND a model with the effect of year (linear) and transect (and phrag abundance) and year*transect on phrag abundance
 
+options(contrasts = c("contr.helmert","contr.poly"))
 
 phragmain <- read.csv("/Users/coleman/Documents/R/LAMARSH/Data/PhragSurvey2017to2022.csv", stringsAsFactors = TRUE)
 phragx <- phragmain %>%
