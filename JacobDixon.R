@@ -11,6 +11,7 @@ install.packages("tidyverse") # for piping protocols (%>%)
 library(tidyverse)
 library(ggplot2)
 library(vegan)
+library(gridExtra)
 
 # Read in data
 PhragData <- read.csv("PhragSurvey2017to2022.csv")
@@ -292,61 +293,447 @@ anova(Phrag_dbrda.freq, by="margin", permutations = 1000)
 # all variables significant
 
 
-#### Ordination by site by year - 2017-2022 ---- 
-# Try Pearl River first
-# We will do most frequently observed species in each year
-### 2017
+#### Ordination by site across years (2017-2022) ---- 
+# We will do most frequently observed species in each site
 
-PhragData_P17 <- PhragData_narm[grep("2017", PhragData_narm$Year),]
-PhragData_P17 <- PhragData_P17[grep("Pearl River", PhragData_P17$Site),]
+PhragData_P <- PhragData_narm[grep("Pearl River", PhragData_narm$Site),]
+PhragData_BB <- PhragData_narm[grep("Big Branch", PhragData_narm$Site),]
+PhragData_Bar <- PhragData_narm[grep("Barataria", PhragData_narm$Site),]
+PhragData_BS <- PhragData_narm[grep("Bayou Sauvage", PhragData_narm$Site),]
 
-specP17 <- PhragData_P17[,11:74]
-envP17 <- PhragData_P17[,1:10]
 
-# 21 observations in one year - 3 observations is a 14.3% freq.
-spec_P <- specP17[colSums(specP17>0) > 3]  
-ind <- rowSums(spec_P)>0
-spec_P2 <- spec_P[ind,]
-env_P <- envP17[ind,]
+### Pearl River (P) ----
 
-Phrag_dbrda.P17 <- capscale(spec_P2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
-                            Litter, data=env_P,distance="bray",
+spec_P <- PhragData_P[,14:77]
+env_P <- PhragData_P[,1:12]
+
+# 126 observations in six years - 7 obs = 5.6% presence
+spec_P1 <- spec_P[colSums(spec_P>0) > 7]  
+ind <- rowSums(spec_P1)>0
+spec_P2 <- spec_P1[ind,]
+env_P2 <- env_P[ind,]
+
+Phrag_dbrda.P <- capscale(spec_P2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                            Litter, data=env_P2,distance="bray",
                             na.action = na.exclude)
+## PERMANOVA check
+anova(Phrag_dbrda.P, by="margin", permutations = 1000) 
+# Only Salinity and Biomass Are Significant
 
 # Quick peek and onto big plot
-summary(Phrag_dbrda.freq) # CAP1 - 14.9%; CAP2 - 1.6%
-plot(Phrag_dbrda.freq)
+summary(Phrag_dbrda.P) # CAP1 - 7.5%; CAP2 - 1.7%
+plot(Phrag_dbrda.P)
 
 library(ggplot2)
 library(ggrepel)
 
-site_scoresP17 <- data.frame(cbind(env_P,scores(Phrag_dbrda.P17,scaling = 2)$site,
-                                 labels=rownames(scores(Phrag_dbrda.P17)$site)))
-species_scoresP17 <- data.frame(scores(Phrag_dbrda.P17, scaling = 2)$species,
-                              labels=rownames(scores(Phrag_dbrda.P17)$species))
-reg_scoresP17 <- data.frame(scores(Phrag_dbrda.P17,display="bp", scaling = 2),
-                          labels=rownames(scores(Phrag_dbrda.P17,display="bp")))
+site_scoresP <- data.frame(cbind(env_P2,scores(Phrag_dbrda.P,scaling = 2)$site,
+                                 labels=rownames(scores(Phrag_dbrda.P)$site)))
+species_scoresP <- data.frame(scores(Phrag_dbrda.P, scaling = 2)$species,
+                              labels=rownames(scores(Phrag_dbrda.P)$species))
+reg_scoresP <- data.frame(scores(Phrag_dbrda.P,display="bp", scaling = 2),
+                          labels=rownames(scores(Phrag_dbrda.P,display="bp")))
 
 
 ggplot() + 
   geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
   geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
-  xlab("RDA 1 (14.9%)") +
-  ylab("RDA 2 (1.6%)") +  
-  ggtitle("Pearl River 2017") +
-  geom_text(data=site_scoresP17, aes(x=CAP1, y=CAP2, label=labels), size=1) +
-  geom_point(data=site_scoresP17, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+  xlab("RDA 1 (7.5%)") +
+  ylab("RDA 2 (1.7%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Pearl River") +
+  geom_text(data=site_scoresP, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresP, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
              color="gray50") +
-  geom_segment(data=species_scoresP17, 
+  geom_segment(data=species_scoresP, 
                aes(x=0, y=0, xend=CAP1, yend=CAP2), 
                colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
-  geom_text_repel(data=species_scoresP17, 
+  geom_text_repel(data=species_scoresP, 
                   aes(x=CAP1, y=CAP2, label=labels),
                   colour="red", size=3, max.overlaps = 100) +
-  geom_segment(data=reg_scoresP17,
+  geom_segment(data=reg_scoresP,
                aes(x=0, y=0, xend=CAP1, yend=CAP2), 
                colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
-  geom_text_repel(data=reg_scoresP17, 
+  geom_text_repel(data=reg_scoresP, 
                   aes(x=CAP1, y=CAP2, label=labels),
                   colour="black",size=3)+
   coord_fixed(ratio=1)
+  
+
+
+#### Big Branch (BB) ----
+
+spec_BB <- PhragData_BB[,14:77]
+env_BB <- PhragData_BB[,1:12]
+
+# 100 observations in five years (no 2019) - 6 obs = 6% presence
+spec_BB1 <- spec_BB[colSums(spec_BB>0) > 6]  
+ind <- rowSums(spec_BB1)>0
+spec_BB2 <- spec_BB1[ind,]
+env_BB2 <- env_BB[ind,]
+
+Phrag_dbrda.BB <- capscale(spec_BB2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                           Litter, data=env_BB2,distance="bray",
+                           na.action = na.exclude)
+## PERMANOVA check
+anova(Phrag_dbrda.BB, by="margin", permutations = 1000) 
+# pH, Salinity, Litter are significant
+
+# Quick peek and onto big plot
+summary(Phrag_dbrda.BB) # CAP1 - 8.3%; CAP2 - 5.8%
+plot(Phrag_dbrda.BB)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scoresBB <- data.frame(cbind(env_BB2,scores(Phrag_dbrda.BB,scaling = 2)$site,
+                                 labels=rownames(scores(Phrag_dbrda.BB)$site)))
+species_scoresBB <- data.frame(scores(Phrag_dbrda.BB, scaling = 2)$species,
+                              labels=rownames(scores(Phrag_dbrda.BB)$species))
+reg_scoresBB <- data.frame(scores(Phrag_dbrda.BB,display="bp", scaling = 2),
+                          labels=rownames(scores(Phrag_dbrda.BB,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (8.3%)") +
+  ylab("RDA 2 (5.8%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Big Branch") +
+  geom_text(data=site_scoresBB, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBB, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBB, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBB, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBB,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBB, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+#### Barataria (Bar) ----
+
+spec_Bar <- PhragData_Bar[,14:77]
+env_Bar <- PhragData_Bar[,1:12]
+
+# 122 observations in six years - 7 obs = 5.7% presence
+spec_Bar1 <- spec_Bar[colSums(spec_Bar>0) > 7]  
+ind <- rowSums(spec_Bar1)>0
+spec_Bar2 <- spec_Bar1[ind,]
+env_Bar2 <- env_Bar[ind,]
+
+Phrag_dbrda.Bar <- capscale(spec_Bar2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                             Litter, data=env_Bar2,distance="bray",
+                           na.action = na.exclude)
+## PERMANOVA check
+anova(Phrag_dbrda.Bar, by="margin", permutations = 1000) 
+# Salinity and Litter are significant (pH & Water Depth kinda close) 
+
+# Quick peek and onto big plot
+summary(Phrag_dbrda.Bar) # CAP1 - 7.3%; CAP2 - 1.9%
+plot(Phrag_dbrda.Bar)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scoresBar <- data.frame(cbind(env_Bar2,scores(Phrag_dbrda.Bar,scaling = 2)$site,
+                                  labels=rownames(scores(Phrag_dbrda.Bar)$site)))
+species_scoresBar <- data.frame(scores(Phrag_dbrda.Bar, scaling = 2)$species,
+                               labels=rownames(scores(Phrag_dbrda.Bar)$species))
+reg_scoresBar <- data.frame(scores(Phrag_dbrda.Bar,display="bp", scaling = 2),
+                           labels=rownames(scores(Phrag_dbrda.Bar,display="bp")))
+
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (7.3%)") +
+  ylab("RDA 2 (1.9%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Barataria") +
+  geom_text(data=site_scoresBar, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBar, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBar, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBar, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBar,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBar, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+#### Bayou Sauvage (BS) ----
+
+spec_BS <- PhragData_BS[,14:77]
+env_BS <- PhragData_BS[,1:12]
+
+# 54 observations in three years (only 17,19,21) - 3 obs = 5.6% presence
+spec_BS1 <- spec_BS[colSums(spec_BS>0) > 3]  
+ind <- rowSums(spec_BS1)>0
+spec_BS2 <- spec_BS1[ind,]
+env_BS2 <- env_BS[ind,]
+
+Phrag_dbrda.BS <- capscale(spec_BS2~pH+Salinity15cmppt+WaterDepthcm+Biomass+
+                              Litter, data=env_BS2,distance="bray",
+                            na.action = na.exclude)
+## PERMANOVA check
+anova(Phrag_dbrda.BS, by="margin", permutations = 1000) 
+# Water Depth and litter is significant 
+
+# Quick peek and onto big plot
+summary(Phrag_dbrda.BS) # CAP1 - 7.9%; CAP2 - 5.2%
+plot(Phrag_dbrda.BS)
+
+library(ggplot2)
+library(ggrepel)
+
+site_scoresBS <- data.frame(cbind(env_BS2,scores(Phrag_dbrda.BS,scaling = 2)$site,
+                                   labels=rownames(scores(Phrag_dbrda.BS)$site)))
+species_scoresBS <- data.frame(scores(Phrag_dbrda.BS, scaling = 2)$species,
+                                labels=rownames(scores(Phrag_dbrda.BS)$species))
+reg_scoresBS <- data.frame(scores(Phrag_dbrda.BS,display="bp", scaling = 2),
+                            labels=rownames(scores(Phrag_dbrda.BS,display="bp")))
+
+ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (7.9%)") +
+  ylab("RDA 2 (5.2%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Bayou Sauvage") +
+  geom_text(data=site_scoresBS, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBS, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBS, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBS, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBS,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBS, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+
+#### Most Frequently Observed Species ----
+# Visualize most frequently observed Species in the four sites for the dbRDA
+spec_BSlong <- c(colnames(spec_BS2), rep(NA, 12 - length(colnames(spec_BS2))))
+spec_Barlong <- c(colnames(spec_Bar2), rep(NA, 12 - length(colnames(spec_Bar2))))
+spec_BBlong <- c(colnames(spec_BB2), rep(NA, 12 - length(colnames(spec_BB2))))
+spec_Plong <- c(colnames(spec_P2), rep(NA, 12 - length(colnames(spec_P2))))
+
+Mostfreq <- data.frame(Bayou_Sauvage5.6=spec_BSlong,Barataria5.7=spec_Barlong,
+                   Big_Branch6.0=spec_BBlong,Pearl_River5.6=spec_Plong)
+
+#### ggplot combine Sites (freq, all years) ----
+plot1 <- ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (7.5%)") +
+  ylab("RDA 2 (1.7%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Pearl River") +
+  geom_text(data=site_scoresP, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresP, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresP, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresP, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresP,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresP, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+plot2 <- ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (8.3%)") +
+  ylab("RDA 2 (5.8%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Big Branch") +
+  geom_text(data=site_scoresBB, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBB, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBB, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBB, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBB,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBB, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+plot3 <- ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (7.3%)") +
+  ylab("RDA 2 (1.9%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Barataria") +
+  geom_text(data=site_scoresBar, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBar, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBar, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBar, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBar,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBar, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+plot4 <- ggplot() + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (7.9%)") +
+  ylab("RDA 2 (5.2%)") +  
+  #ylim(c(-2,2)) +
+  ggtitle("Bayou Sauvage") +
+  geom_text(data=site_scoresBS, aes(x=CAP1, y=CAP2, label=labels), size=1) +
+  geom_point(data=site_scoresBS, aes(x=CAP1, y=CAP2),alpha=0.7, size=0.5, 
+             color="gray50") +
+  geom_segment(data=species_scoresBS, 
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="red", size=0.2, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=species_scoresBS, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="red", size=3, max.overlaps = 100) +
+  geom_segment(data=reg_scoresBS,
+               aes(x=0, y=0, xend=CAP1, yend=CAP2), 
+               colour="blue", size=0.7, arrow=arrow(length=unit(.15,"cm"))) +
+  geom_text_repel(data=reg_scoresBS, 
+                  aes(x=CAP1, y=CAP2, label=labels),
+                  colour="black",size=3)+
+  coord_fixed(ratio=1)
+
+grid.arrange(plot1,plot2,plot3,plot4, nrow=1)
+
+
+  #
+#### GLM on Shannon Index ----
+PhragData_narm <- PhragData %>%
+  filter(!is.na(WaterDepthcm), !is.na(Phragmites.australis),
+         !is.na(Site), !is.na(Transect), !is.na(pH), !is.na(Year),
+         !is.na(Shannon), Site!="LUMCON 1", Site!="LUMCON 2", 
+         Site!="Fontainebleau", Site!="Turtle Cove")
+
+# Some Code From Thomas on Temporal and Spatial Models ---
+#Reg Model
+PhragShan1 <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+                  random = ~1|Plot, data = PhragData_narm)
+summary(PhragShan1)
+
+#temporal model
+PhragShan1T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm)
+summary(PhragShan1T)
+
+#spatial model 
+PhragShan1S <- gls(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+                correlation=corSpher(form = ~ Lat+Long|Year),
+                data = PhragData_narm)
+
+anova(PhragShan1, PhragShan1T, PhragShan1S)
+# Temporal Model is best (PhragShan1T)
+
+
+# Set contrasts to helmert before doing type 3 ANOVA on best model
+options(contrasts=c("contr.helmert","contr.poly"))
+
+anova(PhragShan1T, type = "marginal")
+
+# Test other interactive effects and the three way anova, separate and together
+PhragShan1T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm, method = "ML")
+
+PhragShan2T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+                             Site*Transect,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm, method = "ML")
+
+PhragShan3T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+                     Site*Transect*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm, method = "ML")
+
+PhragShan4T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+                     Site*Transect + Site*Transect*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm, method = "ML")
+
+anova(PhragShan1T,PhragShan2T,PhragShan3T,PhragShan4T)
+# PhragShan3T is marginally better and includes the three-way ANOVA
+
+PhragShan4T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+                     Site*Transect + Site*Transect*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm)
+
+anova(PhragShan4T, type = "marginal")
+
+
+
+# Change model to REML (default, needs no specification)
+PhragShan3T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+                     Site*Transect*Year,
+                   correlation = corAR1(form =~ Year|Plot),
+                   random = ~1|Plot, data = PhragData_narm)
+
+anova(PhragShan3T, type = "marginal")
+# site, Year, and their interactive effect is significant. 
+# Let's plot to get an idea
+
+# Plot by site and year ---
+PhragData_Shan <- PhragData_narm %>%
+  group_by(Site, Year) %>%
+  summarise(mean = mean(Shannon), se = std.error(Shannon))
+
+# First we will plot. But later, needs work
+
+ggplot(data = PhragData_Shan, aes(x=Year,y=mean, fill=Site)) +
+  geom_line() +
+  geom_point(stat = "identity", position = "dodge") +
+  ylim(0.1,1.2) +
+  labs(x = "Year",y="Shannon Diversity Index") +
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.25) +
+  facet_wrap(~Site,scales = "free") +
+  theme(legend.position = "none")
+
+
+
+#### Nugget Effect ----
+# spherical or exponential models
