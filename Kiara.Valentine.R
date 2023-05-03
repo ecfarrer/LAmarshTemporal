@@ -1,10 +1,11 @@
 library(tidyverse)
 library(lme4)
-install.packages("gitcreds")
-library(gitcreds)
-gitcreds_set(ghp_Ddfb4AucVntkvuxDwwNIwV10bKOiah0bUYco) #enter your personal access token
 library(plotrix)
 library(vegan)
+
+install.packages("gitcreds")
+library(gitcreds)
+gitcreds_set("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") #enter your personal access token
 
 #Regressions of Phrag vs. pH
 
@@ -140,6 +141,77 @@ ggplot(site_scoresPR) +
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
 
+##### Restricted permutation tests for repeated measures ordinations #####
+
+#the above models are sketchy because we have repeated measures data and they aren't independent. this is taken from Gavin Simpson's powerpoint and gihub page: https://github.com/gavinsimpson/advanced-vegan-webinar-july-2020
 
 
 
+# Going through the tutorial in https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/restricting-permutations/#Analysis%20of%20a%20RCB%20Design
+#this is downloaded as "Applied Multivariate Statistics in R" book
+
+#check of permutations, this screws with everything, need to reload envBP
+# envBP<-envBP%>%unite("Plot.Year",c(Plot,Yearfac),remove=F)%>%arrange(Plot)
+# (h <- how(within = Within(type = "none"), plots = Plots(strata = envBP$Plot, type = "free"),nperm=999))
+# envBP[shuffle(nrow(envBP), control = h), c("Plot.Year","Plot", "Yearfac", "Transect")]
+# check(envBP,h)
+
+#testing the effect of transect
+#note that adonis2 and capscale give slightly different results, so just pick one or the other, using add="lingoes" or "cailliez" to deal with negative eigenvalues changes the results a bit too. if you do lingoes or cailliez capscale and adonis2 give the same result
+h <- how(within = Within(type = "none"), 
+         plots = Plots(strata = envBP$Plot, type = "free"),
+         nperm=999)
+dbrdaBPb <- capscale(speBPb ~ Transect+Plot, distance="bray",data = envBP)#add="lingoes",
+anova(dbrdaBPb, permutations = h,by="terms") #model="reduced" permutes the residuals of the model after Condition() is applied 
+adonis2(speBPb~Transect+Plot, method="bray",permutations = h,by="terms",data=envBP)#add="lingoes",
+#see page 13 in https://cran.r-hub.io/web/packages/permute/vignettes/permutations.pdf
+#also see https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/restricting-permutations/#Analysis%20of%20a%20RCB%20Design
+#the anova function calculates the F value= variance/Df of the factor divided by the residual variance/df
+(2.9642/2)/(22.5167/105)=6.91 #anova
+#but this is not correct b/c we want to use not the residual variance but rather the unexplained variation among plots as the denominator, so do the following
+(2.9642/2)/(5.7185/18)=4.665 #anova
+(2.9115/2)/(5.2919/18)=4.951624#adonis2
+
+#adonis: still need to do permutation test by hand to get real significance
+perms <- rbind(1:nrow(envBP),shuffleSet(n = nrow(envBP), control = h, nset = 999))
+head(perms)
+results <- matrix(nrow = nrow(perms), ncol = 4)
+colnames(results) <- c("Transect", "Plot", "Residual","Total")
+for (i in 1:nrow(perms)) {
+  temp.data <- envBP[perms[i, ], ]
+  temp <- adonis2(speBPb ~ Transect + Plot,
+                  data = temp.data,
+                  method = "bray",
+                  permutations = 0)
+  results[i, ] <- t(temp$SumOfSqs)
+}
+results <- results %>%
+  data.frame() %>%
+  mutate(F.Transect = (Transect/2)/(Plot/18))
+
+#make sure there are no duplicates of the actual data
+which(perms[,1]==1&perms[,2]==2&perms[,3]==3)
+
+#calculate p value: F=4.95, P=0.003
+with(results, sum(F.Transect >= F.Transect[1]) / length(F.Transect))
+
+#capscale: still need to do permutation test by hand to get real significance
+perms <- rbind(1:nrow(envBP),shuffleSet(n = nrow(envBP), control = h, nset = 999))
+head(perms)
+results <- matrix(nrow = nrow(perms), ncol = 3)
+colnames(results) <- c("Transect", "Plot", "Residual")
+for (i in 1:nrow(perms)) {
+  temp.data <- envBP[perms[i, ], ]
+  temp<-capscale(speBPb ~ Transect + Plot, data = temp.data, distance = "bray")
+  temp2<-anova(temp,permutations = 0,by="terms")
+  results[i, ] <- t(temp2$SumOfSqs)
+}
+results <- results %>%
+  data.frame() %>%
+  mutate(F.Transect = (Transect/2)/(Plot/18))
+
+#make sure there are no duplicates of the actual data
+which(perms[,1]==1&perms[,2]==2&perms[,3]==3)
+
+#calculate p value: F=4.95, P=0.003
+with(results, sum(F.Transect >= F.Transect[1]) / length(F.Transect))
