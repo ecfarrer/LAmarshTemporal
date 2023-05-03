@@ -43,3 +43,11 @@ anova(model1, model1TA, model1SA)
 anova(model1TA, type = "marginal") # 2 way effects
 
 anova(model1TA2, type = "marginal") # 3 way effects
+
+## Model validation
+plot(fitted(model1TA2),resid(model1TA2,type="normalized")) # looks weird but richness is an integer
+plot(phragy$Year,resid(model1TA2,type="normalized"))
+plot(phragy$Site,resid(model1TA2,type="normalized"))
+plot(phragy$Transect,resid(model1TA2,type="normalized"))
+hist(resid(model1TA2,type="normalized"))
+
