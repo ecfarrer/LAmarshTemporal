@@ -12,6 +12,7 @@ library(tidyverse)
 library(ggplot2)
 library(vegan)
 library(gridExtra)
+library(nlme)
 
 # Read in data
 PhragData <- read.csv("PhragSurvey2017to2022.csv")
@@ -641,29 +642,39 @@ plot4 <- ggplot() +
 grid.arrange(plot1,plot2,plot3,plot4, nrow=1)
 
 
-  #
+#### Pearl River Year Analysis ----
+PhragData_P17 <- PhragData_P[grep("2017",PhragData_P$Year),]
+PhragData_P18 <- PhragData_P[grep("2018",PhragData_P$Year),]
+PhragData_P19 <- PhragData_P[grep("2019",PhragData_P$Year),]
+PhragData_P20 <- PhragData_P[grep("2020",PhragData_P$Year),]
+PhragData_P21 <- PhragData_P[grep("2021",PhragData_P$Year),]
+PhragData_P22 <- PhragData_P[grep("2022",PhragData_P$Year),]
+
+#
 #### GLM on Shannon Index ----
 PhragData_narm <- PhragData %>%
-  filter(!is.na(WaterDepthcm), !is.na(Phragmites.australis),
-         !is.na(Site), !is.na(Transect), !is.na(pH), !is.na(Year),
-         !is.na(Shannon), Site!="LUMCON 1", Site!="LUMCON 2", 
+  filter(!is.na(Shannon), Site!="LUMCON 1", Site!="LUMCON 2", 
          Site!="Fontainebleau", Site!="Turtle Cove")
+
+# Use year as a factor (but recall corAR1() requires year as an integer) 
+PhragData_narm$Year.f <- as.factor(PhragData_narm$Year)
+
 
 # Some Code From Thomas on Temporal and Spatial Models ---
 #Reg Model
-PhragShan1 <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+PhragShan1 <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f,
                   random = ~1|Plot, data = PhragData_narm)
 summary(PhragShan1)
 
 #temporal model
-PhragShan1T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+PhragShan1T <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f,
                    correlation = corAR1(form =~ Year|Plot),
                    random = ~1|Plot, data = PhragData_narm)
 summary(PhragShan1T)
 
 #spatial model 
-PhragShan1S <- gls(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
-                correlation=corSpher(form = ~ Lat+Long|Year),
+PhragShan1S <- gls(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f,
+                correlation=corSpher(form = ~ Lat+Long|Year.f),
                 data = PhragData_narm)
 
 anova(PhragShan1, PhragShan1T, PhragShan1S)
@@ -676,36 +687,28 @@ options(contrasts=c("contr.helmert","contr.poly"))
 anova(PhragShan1T, type = "marginal")
 
 # Test other interactive effects and the three way anova, separate and together
-PhragShan1T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year,
+PhragShan1T <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f,
                    correlation = corAR1(form =~ Year|Plot),
                    random = ~1|Plot, data = PhragData_narm, method = "ML")
 
-PhragShan2T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
+PhragShan2T <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f +
                              Site*Transect,
                    correlation = corAR1(form =~ Year|Plot),
                    random = ~1|Plot, data = PhragData_narm, method = "ML")
 
-PhragShan3T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
-                     Site*Transect*Year,
+PhragShan3T <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f +
+                     Site*Transect*Year.f,
                    correlation = corAR1(form =~ Year|Plot),
                    random = ~1|Plot, data = PhragData_narm, method = "ML")
 
-PhragShan4T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
-                     Site*Transect + Site*Transect*Year,
+PhragShan4T <- lme(Shannon ~ Site + Year.f + Transect + Year.f*Transect + Site*Year.f +
+                     Site*Transect + Site*Transect*Year.f,
                    correlation = corAR1(form =~ Year|Plot),
                    random = ~1|Plot, data = PhragData_narm, method = "ML")
 
 anova(PhragShan1T,PhragShan2T,PhragShan3T,PhragShan4T)
-# PhragShan3T is marginally better and includes the three-way ANOVA
-
-PhragShan4T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
-                     Site*Transect + Site*Transect*Year,
-                   correlation = corAR1(form =~ Year|Plot),
-                   random = ~1|Plot, data = PhragData_narm)
-
-anova(PhragShan4T, type = "marginal")
-
-
+# PhragShan3T and PhragShan4T are identical since three way interaction encompasses
+# other two-way interactions. Let's use PhragShan3T since it is smaller.
 
 # Change model to REML (default, needs no specification)
 PhragShan3T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year +
@@ -714,8 +717,17 @@ PhragShan3T <- lme(Shannon ~ Site + Year + Transect + Year*Transect + Site*Year 
                    random = ~1|Plot, data = PhragData_narm)
 
 anova(PhragShan3T, type = "marginal")
-# site, Year, and their interactive effect is significant. 
-# Let's plot to get an idea
+# Year, transect, Site:Year, Site:Transect, Site:Year:Transect (not site...5/4/2023)
+# See Catherine's figure (Fig. 3)
+
+#### GLM Model Validation -
+plot(fitted(PhragShan3T),resid(PhragShan3T,type="normalized"))
+plot(PhragData_narm$Year.f,resid(PhragShan3T,type="normalized"))
+plot(as.factor(PhragData_narm$Site),resid(PhragShan3T,type="normalized"))
+plot(as.factor(PhragData_narm$Transect),resid(PhragShan3T,type="normalized"))
+hist(resid(PhragShan3T,type="normalized"))
+
+
 
 # Plot by site and year ---
 PhragData_Shan <- PhragData_narm %>%
@@ -732,7 +744,6 @@ ggplot(data = PhragData_Shan, aes(x=Year,y=mean, fill=Site)) +
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.25) +
   facet_wrap(~Site,scales = "free") +
   theme(legend.position = "none")
-
 
 
 #### Nugget Effect ----
