@@ -158,7 +158,7 @@ stepf <- ordistep(capscale(spec~1,distance="bray",data=envir),
 
 
 #### Assessing Abundance for all Species ----
-spec <- PhragData_narm[,11:74]  # all of our species
+spec <- PhragData_narm[,14:77]  # all of our species
 spec_sort <- spec               # create copy of data frame to use in for loop
 
 for(i in 1:ncol(spec)) {
@@ -174,8 +174,8 @@ top_spec <- top_abun1[52:64,]   # select the top ones by row number
 # Probably a smoother way to do this but some was also for visualization
 
 #### Ordination Plot of 13 Most Abundant Species ----
-envir <- PhragData_narm[,1:10]
-spec <- PhragData_narm[,11:74]    # again, take all of the species
+envir <- PhragData_narm[,1:12]
+spec <- PhragData_narm[,14:77]    # again, take all of the species
 top_species_string <- top_spec[[1]]   # here is our top species in a string
 spec.top <- select(spec, all_of(top_species_string)) 
                                     # use string to select from all species
@@ -649,6 +649,8 @@ PhragData_P19 <- PhragData_P[grep("2019",PhragData_P$Year),]
 PhragData_P20 <- PhragData_P[grep("2020",PhragData_P$Year),]
 PhragData_P21 <- PhragData_P[grep("2021",PhragData_P$Year),]
 PhragData_P22 <- PhragData_P[grep("2022",PhragData_P$Year),]
+# unfinished ordination work, certainly never to be looked at again
+
 
 #
 #### GLM on Shannon Index ----
