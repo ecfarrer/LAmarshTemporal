@@ -1,5 +1,8 @@
 ##### Emily's code #####
 
+library(tidyverse)
+library(plotrix)
+library(ggthemes)
 
 options(contrasts=c("contr.helmert","contr.poly"))
 
@@ -29,16 +32,22 @@ ggplot(dat3,aes(x=Year,y=mean,col=Transect))+
   facet_wrap(~Site)#,scales="free"
 
 #pretty fig
+#to get the panels to each have an x andy axis you can also use library(lemon) And change facet_grid(Spher~effSize) to facet_rep_grid(Spher~effSize); https://stackoverflow.com/questions/24161073/show-x-axis-and-y-axis-for-every-plot-in-facet-grid
+
 pdf("phragabun.pdf",width=6.5,height=4.5)
 ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
   labs(y="Phragmites australis abundance") +
   #ylim(20,110)+
   theme_classic()+
-  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1),axis.line = element_line())+#,legend.position = "none"
+  #theme_tufte()+
+  geom_hline(yintercept=-Inf,linewidth=.4)+
+  geom_vline(xintercept=-Inf,linewidth=.4)+
+  coord_cartesian(clip="off")+
   geom_point(size=1.8)+
   geom_line()+
   geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
-  facet_wrap(vars(Site),strip.position = "top",scales="free")
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
   #geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
 dev.off()
 
@@ -141,10 +150,27 @@ ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
   theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
   geom_point(size=1.8)+
   geom_line()+
+  geom_hline(yintercept=-Inf,linewidth=.4)+
+  geom_vline(xintercept=-Inf,linewidth=.4)+
+  coord_cartesian(clip="off")+
   geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
-  facet_wrap(vars(Site),strip.position = "top",scales="free")
+  facet_wrap(vars(Site),strip.position = "top")#
 #geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
 dev.off()
+
+dat3<-dat2%>%
+  group_by(Site, Transect)%>%
+  summarise(mean=mean(Richness,na.rm=T),se=std.error(Richness))
+data.frame(dat3)
+
+ggplot(data=dat3, aes(x=Site,y = mean,color=Transect))+
+  labs(y="Native Richness") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_line()+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
+  facet_wrap(vars(Transect),strip.position = "top")#,scales="free"
 
 
 #Shannon
@@ -161,7 +187,79 @@ ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
   geom_point(size=1.8)+
   geom_line()+
   geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
-  facet_wrap(vars(Site),strip.position = "top",scales="free")
+  facet_wrap(vars(Site),strip.position = "top")
+#geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
+dev.off()
+
+
+#Evenness
+dat3<-dat2%>%
+  group_by(Year, Transect, Site)%>%
+  summarise(mean=mean(Evenness,na.rm=T),se=std.error(Evenness))
+data.frame(dat3)
+
+#pdf("Shannon.pdf",width=6.5,height=4.5)
+ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
+  labs(y="Shannon diversity") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_line()+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
+  facet_wrap(vars(Site),strip.position = "top")
+#dev.off()
+
+
+#Litter
+dat3<-dat2%>%
+  group_by(Year, Site)%>%
+  summarise(mean=mean(Litter,na.rm=T),se=std.error(Litter))
+data.frame(dat3)
+
+#pdf("Shannon.pdf",width=6.5,height=4.5)
+ggplot(data=dat3, aes(x=Year,y = mean,color=Site))+
+  labs(y="Shannon diversity") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_line()+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)
+#  facet_wrap(vars(Site),strip.position = "top")
+#dev.off()
+
+
+##### Salinity over time ######
+
+#Salinity
+dat3<-dat2%>%
+  group_by(Year, Transect, Site)%>%
+  summarise(mean=mean(Salinity15cmppt,na.rm=T),se=std.error(Salinity15cmppt,na.rm=T))
+data.frame(dat3)
+
+ggplot(dat3,aes(x=Year,y=mean,col=Transect))+
+  labs(y="Phragmites australis abundance") +
+  geom_point()+
+  geom_line()+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.15,linewidth=.8) +
+  facet_wrap(~Site)#,scales="free"
+
+#pretty fig
+#to get the panels to each have an x andy axis you can also use library(lemon) And change facet_grid(Spher~effSize) to facet_rep_grid(Spher~effSize); https://stackoverflow.com/questions/24161073/show-x-axis-and-y-axis-for-every-plot-in-facet-grid
+
+pdf("phragabun.pdf",width=6.5,height=4.5)
+ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
+  labs(y="Phragmites australis abundance") +
+  #ylim(20,110)+
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1),axis.line = element_line())+#,legend.position = "none"
+  #theme_tufte()+
+  geom_hline(yintercept=-Inf,linewidth=.4)+
+  geom_vline(xintercept=-Inf,linewidth=.4)+
+  coord_cartesian(clip="off")+
+  geom_point(size=1.8)+
+  geom_line()+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
 #geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
 dev.off()
 
@@ -464,4 +562,12 @@ summary(glht(modelT2,linfct=mcp(Site="Tukey")))
 
 
 
+#native abundance
+#  weights = varExp(form =~ Year),
+modelT2 <- lme(
+  NatAbun ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Site*Transect+Site*Transect*Yearfac,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = datp)
+summary(modelT2)
+anova(modelT2,type="marginal")
 
