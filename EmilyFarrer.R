@@ -137,6 +137,28 @@ dev.off()
 
 ###### Diversity #####
 
+#Native abundance
+dat3<-dat2%>%
+  group_by(Year, Transect, Site)%>%
+  summarise(mean=mean(NatAbun,na.rm=T),se=std.error(NatAbun))
+data.frame(dat3)
+
+pdf("natrichness.pdf",width=6.5,height=4.5)
+ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
+  labs(y="Native Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_line()+
+  geom_hline(yintercept=-Inf,linewidth=.4)+
+  geom_vline(xintercept=-Inf,linewidth=.4)+
+  coord_cartesian(clip="off")+
+  geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.25,size=.5)+
+  facet_wrap(vars(Site),strip.position = "top")#
+#geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
+dev.off()
+
+
 #Native Richness
 dat3<-dat2%>%
   group_by(Year, Transect, Site)%>%
@@ -210,6 +232,7 @@ ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
 #dev.off()
 
 
+
 #Litter
 dat3<-dat2%>%
   group_by(Year, Site)%>%
@@ -237,7 +260,7 @@ dat3<-dat2%>%
 data.frame(dat3)
 
 ggplot(dat3,aes(x=Year,y=mean,col=Transect))+
-  labs(y="Phragmites australis abundance") +
+  labs(y="Salinity (ppt)") +
   geom_point()+
   geom_line()+
   geom_errorbar(aes(ymax = mean+se, ymin=mean-se),width=.15,linewidth=.8) +
@@ -248,7 +271,7 @@ ggplot(dat3,aes(x=Year,y=mean,col=Transect))+
 
 pdf("phragabun.pdf",width=6.5,height=4.5)
 ggplot(data=dat3, aes(x=Year,y = mean,color=Transect))+
-  labs(y="Phragmites australis abundance") +
+  labs(y="Salinity (ppt)") +
   #ylim(20,110)+
   theme_classic()+
   theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1),axis.line = element_line())+#,legend.position = "none"
