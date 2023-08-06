@@ -3,6 +3,7 @@
 library(tidyverse)
 library(plotrix)
 library(ggthemes)
+library(vegan)
 
 options(contrasts=c("contr.helmert","contr.poly"))
 
@@ -295,9 +296,19 @@ dev.off()
 
 #See the "RestrictedPermutationsforOrdinations.R" file for the statistical tests
 
+temp<-dat2%>%
+  select(Phragmites.australis:Vigna.luteola)%>%
+  filter(!is.na(Phragmites.australis))
+min(temp)
+max(temp)
+
 ##### Ordination - Barataria #####
 
 ##Barataria all years
+#questions I need to decide on: 
+  #relative abundance vs absolute abundance (I used relative abun before)
+  #bray vs jaccard (I used jaccard before)
+  #dbRDA vs CCA vs NMDS
 datBP<-dat2%>%
   filter(Site=="Barataria"&Year%in%c(2017,2018,2019,2020,2021,2022))
 speBP<-datBP%>%
@@ -306,24 +317,34 @@ speBP<-datBP%>%
 speBPb<-speBP[colSums(speBP>0) > 0]
 envBP<-datBP%>%
   select(Year:DeadPhragStems,Yearfac)
+#take out eleocharis
+#speBPb<-select(speBPb,-Eleocharis.sp.)
+#calculate relative abundance
+speBPc<-decostand(speBPb,method="log",logbase=10)
+#speBPd<-speBPc/rowSums(speBPc)
 
-dbrdaBP <- capscale(speBPb ~ Transect*Yearfac, distance="bray",data = envBP)
+#capscale and dbrda are doing the same thing.
+dbrdaBP <- capscale(vegdist(speBPc,method="bray",binary=F) ~ Transect*Yearfac,data = envBP)
+summary(dbrdaBP)
+#plot(dbrdaBP)
 
 #plotting
 site_scoresBP <- data.frame(cbind(envBP,scores(dbrdaBP)$sites,labels=rownames(scores(dbrdaBP)$sites)))
 
-#export using png default
+#Plot across years, use this
+pdf("OrdinationBarataria.pdf",width=7,height=4)
 ggplot(site_scoresBP) + 
   geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
   geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
-  xlab("RDA 1 (6.4%)") +
-  ylab("RDA 2 (1.6%)") +  
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
   theme_classic()+
   theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
   #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
   geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
-  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
+dev.off()
 
 #Plot with facet wrap by transect, color by year
 ggplot(site_scoresBP) + 
@@ -344,7 +365,7 @@ ggplot(site_scoresBP) +
 ##### Ordination - Bayou Sauvage #####
 ##Bayou Sauvage all years, needed to take out plots that had zero plants
 datBS<-dat2%>%
-  filter(Site=="Bayou Sauvage"&Year%in%c(2017,2018,2019,2020,2021,2022))%>%
+  filter(Site=="Bayou Sauvage"&Year%in%c(2017,2018,2019,2020,2021,2022))%>% #
   filter(!is.na(Phragmites.australis))%>%
   filter(NatAbun+Phragmites.australis>0)
 speBS<-datBS%>%
@@ -353,11 +374,10 @@ speBS<-datBS%>%
 speBSb<-speBS[colSums(speBS>0) > 0]
 envBS<-datBS%>%
   select(Year:DeadPhragStems,Yearfac)
+speBSc<-decostand(speBSb,method="log",logbase=10)
+#speBSd<-speBSc/rowSums(speBSc)
 
-#include year?
-dbrdaBS<-capscale(speBSb~Transect*Yearfac,distance="bray",data=envBS)
-anova(dbrdaBS,by="margin")
-
+#for the analysis we might need to subset the data so we have all years for eachplot, not sure that we need to do this for the figure and it actually doesn't change much anyway so I will not do it now.
 #got an error here that the design wasn't balanced. so trying to reduce the dataset to make it balanced. don't have 112, 113 in 2018, no 113 in 2019, 120 in 2020, 111 in 2022.
 #107,108,109,110,111,112,113 Phrag
 #114,115,116,117,118,119,120 Trans
@@ -365,29 +385,102 @@ anova(dbrdaBS,by="margin")
 #107,108,109,110 Phrag
 #114,115,116,117,118,119 Trans
 #121,122,123,124,125,126,127 Nat
-ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,118,119,121,122,123,124,125,126,127))
+#ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,118,119,121,122,123,124,125,126,127))
 #ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,121,122,123,124))
-speBSc<-speBSb[ind,]
-envBSb<-envBS[ind,]
+#speBSc<-speBSb[ind,]
+#envBSb<-envBS[ind,]
 
-dbrdaBSb <- capscale(speBSc ~ Yearfac + Yearfac:Transect + Condition(Plot), data = envBSb)
-(h <- how(within = Within(type = "none"), plots = Plots(strata = envBSb$Plot, type = "free"),nperm=999))
-anova(dbrdaBSb, permutations = h, model = "reduced") #reduced permutes the residuals of the model after Condition() is applied
-anova(dbrdaBSb, permutations = h, model = "reduced",by="terms") #I'm not sure about this, I'm not sure if we are testing the effect of year based on the permutation scheme
+#capscale
+dbrdaBS <- capscale(vegdist(speBSc,method="bray",binary=F) ~ Transect*Yearfac,data = envBS)
+summary(dbrdaBS)
 
 site_scoresBS <- data.frame(cbind(envBS,scores(dbrdaBS)$sites,labels=rownames(scores(dbrdaBS)$sites)))
 
+pdf("OrdinationBayouSauvage.pdf",width=7,height=4)
 ggplot(site_scoresBS) + 
   geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
   geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
-  xlab("RDA 1 (%)") +
-  ylab("RDA 2 (%)") +  
+  xlab("RDA 1 (33.6%)") +
+  ylab("RDA 2 (10.3%)") +  
   theme_classic()+
   theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
   #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
   geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
-  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect),level=.95)+
   facet_wrap(~Year)
+dev.off()
+
+
+
+
+##Big Branch all years
+datBB<-dat2%>%
+  filter(Site=="Big Branch"&Year%in%c(2017,2018,2019,2020,2021,2022))
+speBB<-datBB%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Big Branch
+speBBb<-speBB[colSums(speBB>0) > 0]
+envBB<-datBB%>%
+  select(Year:DeadPhragStems,Yearfac)
+speBBc<-decostand(speBBb,method="log",logbase=10)
+#doing relative abundance after log transformation hardly changes anything in the ordination plot. doing log transformation on raw data and comparing to raw data plot is SUPER different - the rel abun ordination looks like the log transformed ordination, so the original raw ordination is basically showing differences in abundance
+#speBBd<-speBBc/rowSums(speBBc)
+
+dbrdaBB <- capscale(vegdist(speBBc,method="bray",binary=F) ~ Transect*Yearfac,data = envBB)
+summary(dbrdaBB)
+
+site_scoresBB <- data.frame(cbind(envBB,scores(dbrdaBB)$sites,labels=rownames(scores(dbrdaBB)$sites)))
+
+pdf("OrdinationBigBranch.pdf",width=7,height=4)
+ggplot(site_scoresBB) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (23.6%)") +
+  ylab("RDA 2 (8.4%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+
+##Pear River all years
+#2019 is weird b/c all the phrag plots had lots of eleocharis and none of the other plots did
+datPR<-dat2%>%
+  filter(Site=="Pearl River"&Year%in%c(2017,2018,2019,2020,2021,2022))
+spePR<-datPR%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in PR
+spePRb<-spePR[colSums(spePR>0) > 0]
+envPR<-datPR%>%
+  select(Year:DeadPhragStems,Yearfac)
+spePRc<-decostand(spePRb,method="log",logbase=10)
+#spePRd<-spePRc/rowSums(spePRc)
+  
+dbrdaPR <- capscale(vegdist(spePRc,method="bray",binary=F) ~ Transect*Yearfac,data = envPR)
+summary(dbrdaPR)
+
+site_scoresPR <- data.frame(cbind(envPR,scores(dbrdaPR)$sites,labels=rownames(scores(dbrdaPR)$sites)))
+
+pdf("OrdinationPearlRiver.pdf",width=7,height=4)
+ggplot(site_scoresPR) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (17.9%)") +
+  ylab("RDA 2 (9.8%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+
+
+
 
 
 
@@ -475,6 +568,7 @@ modelT <- lme(
   correlation = corAR1(form =~ Year|Plot),
   random = ~1|Plot, data = datp)
 summary(modelT)
+anova(modelT,type="marginal")
 
 modelS <- gls(
   Phragmites.australis ~ Site + Yearfac + Transect + Yearfac*Transect + Yearfac*Site + Transect*Site,
