@@ -386,9 +386,11 @@ speBSc<-decostand(speBSb,method="log",logbase=10)
 #107,108,109,110 Phrag
 #114,115,116,117,118,119 Trans
 #121,122,123,124,125,126,127 Nat
-#ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,118,119,121,122,123,124,125,126,127))
+#ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,118,119,121,122,123,124,125,126,127)) #these are all plots that are present in all years
+#ind<-which(envBS$Plot%in%c(107,108,109,110,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127)) #these are all plots that are present in 2017 and 2022
+#ind<-which(envBS$Plot%in%c(107,108,109,110,112,113,114,115,116,117,119,120,121,122,123,124,126,127)) #these are all plots that are present in 2017 and 2022 and making it balanced, so deleting a plot in T and N. I deleted the plots in the same line as 111 (118 and 152)
 #ind<-which(envBS$Plot%in%c(107,108,109,110,114,115,116,117,121,122,123,124))
-#speBSc<-speBSb[ind,]
+#speBSd<-speBSc[ind,]
 #envBSb<-envBS[ind,]
 
 #capscale
@@ -414,7 +416,7 @@ dev.off()
 
 
 
-##Big Branch all years
+##### Ordination - Big Branch all years #####
 datBB<-dat2%>%
   filter(Site=="Big Branch"&Year%in%c(2017,2018,2019,2020,2021,2022))
 speBB<-datBB%>%
@@ -447,7 +449,7 @@ ggplot(site_scoresBB) +
 dev.off()
 
 
-##Pear River all years
+##### Ordination - Pear River all years #####
 #2019 is weird b/c all the phrag plots had lots of eleocharis and none of the other plots did
 datPR<-dat2%>%
   filter(Site=="Pearl River"&Year%in%c(2017,2018,2019,2020,2021,2022))
@@ -482,7 +484,7 @@ dev.off()
 
 
 
-##### Ordination - All sites/transects just 2017 and 2022 #####
+##### Ordination - All sites/all transects just 2017 and 2022 #####
 
 datTY<-dat2%>%
   filter(Year%in%c(2017,2022))%>% 
@@ -500,8 +502,9 @@ speTYc<-decostand(speTYb,method="log",logbase=10)
 #speBPd<-speBPc/rowSums(speBPc)
 
 #capscale and dbrda are doing the same thing.
-dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F) ~ Site*Transect*Yearfac,data = envTY)
-#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
+dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfac,data = envTY)
+dbrdaTY <- capscale(sqrt(vegdist(speTYc,method="bray",binary=F)) ~ Site*Transect*Yearfac,data = envTY)
+dbrdaTY <- capscale(speTYc ~ Transect*Yearfac,distance="bray",data = envTY,add="cailliez") #these are the same
 summary(dbrdaTY)
 #plot(dbrdaBP)
 
