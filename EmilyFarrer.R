@@ -325,6 +325,7 @@ speBPc<-decostand(speBPb,method="log",logbase=10)
 
 #capscale and dbrda are doing the same thing.
 dbrdaBP <- capscale(vegdist(speBPc,method="bray",binary=F) ~ Transect*Yearfac,data = envBP)
+#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
 summary(dbrdaBP)
 #plot(dbrdaBP)
 
@@ -481,6 +482,159 @@ dev.off()
 
 
 
+##### Ordination - All sites/transects just 2017 and 2022 #####
+
+datTY<-dat2%>%
+  filter(Year%in%c(2017,2022))%>% 
+  filter(!is.na(Phragmites.australis))%>%
+  filter(NatAbun+Phragmites.australis>0)
+speTY<-datTY%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist 
+speTYb<-speTY[colSums(speTY>0) > 0]
+envTY<-datTY%>%
+  select(Year:DeadPhragStems,Yearfac)
+envTY$SiteTransect<-paste(envTY$Site,envTY$Transect,sep=".")
+speTYc<-decostand(speTYb,method="log",logbase=10)
+#calculate relative abundance
+#speBPd<-speBPc/rowSums(speBPc)
+
+#capscale and dbrda are doing the same thing.
+dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F) ~ Site*Transect*Yearfac,data = envTY)
+#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
+summary(dbrdaTY)
+#plot(dbrdaBP)
+
+#plotting
+site_scoresTY <- data.frame(cbind(envTY,scores(dbrdaTY)$sites,labels=rownames(scores(dbrdaTY)$sites)))
+
+hullTY <- site_scoresTY %>%
+  group_by(Transect,Site,Year) %>%
+  slice(chull(CAP1,CAP2))
+
+pdf("Ordination1722.pdf",width=6,height=6)
+ggplot(site_scoresTY) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (26.1%)") +  # 
+  ylab("RDA 2 (17.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_polygon(data=hullTY,aes(x=CAP1,y=CAP2, fill=Transect,colour = Transect),alpha=.2)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect), size=2)+
+  #facet_wrap(~Site*Year)
+  facet_grid(rows=vars(Site),cols=vars(Year))
+dev.off()
+
+
+
+
+##### Phrag transects all years #####
+datPhrag<-dat2%>%
+  filter(Transect=="Phragmites"&Year%in%c(2017,2022))%>% 
+  filter(!is.na(Phragmites.australis))%>%
+  filter(NatAbun+Phragmites.australis>0)
+spePhrag<-datPhrag%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist 
+spePhragb<-spePhrag[colSums(spePhrag>0) > 0]
+envPhrag<-datPhrag%>%
+  select(Year:DeadPhragStems,Yearfac)
+spePhragc<-decostand(spePhragb,method="log",logbase=10)
+#calculate relative abundance
+#speBPd<-speBPc/rowSums(speBPc)
+
+#capscale and dbrda are doing the same thing.
+dbrdaPhrag <- capscale(vegdist(spePhragc,method="bray",binary=F) ~ Yearfac,data = envPhrag)
+#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
+summary(dbrdaPhrag)
+#plot(dbrdaBP)
+
+#plotting
+site_scoresPhrag <- data.frame(cbind(envPhrag,scores(dbrdaPhrag)$sites,labels=rownames(scores(dbrdaPhrag)$sites)))
+
+#Plot across years, use this
+#pdf("OrdinationPhrag.pdf",width=7,height=4)
+ggplot(site_scoresPhrag) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=MDS1,fill=Site,color=Site),level=.95)+
+  geom_point(aes(x=CAP1, y=MDS1,color=Site),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+ggplot(site_scoresPhrag) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=MDS1,fill=Yearfac,color=Yearfac),level=.95)+
+  geom_point(aes(x=CAP1, y=MDS1,color=Yearfac),alpha=0.7, size=2)+
+  facet_wrap(~Site)
+
+
+
+
+##### Transition transects all years #####
+datTrans<-dat2%>%
+  filter(Transect=="Transition"&Year%in%c(2017,2018,2019,2020,2021,2022))%>% 
+  filter(!is.na(Phragmites.australis))%>%
+  filter(NatAbun+Phragmites.australis>0)
+speTrans<-datTrans%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist 
+speTransb<-speTrans[colSums(speTrans>0) > 0]
+envTrans<-datTrans%>%
+  select(Year:DeadPhragStems,Yearfac)
+speTransc<-decostand(speTransb,method="log",logbase=10)
+#calculate relative abundance
+#speBPd<-speBPc/rowSums(speBPc)
+
+#capscale and dbrda are doing the same thing.
+dbrdaTrans <- capscale(vegdist(speTransc,method="bray",binary=F) ~ Transect*Yearfac,data = envTrans)
+#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
+summary(dbrdaTrans)
+#plot(dbrdaBP)
+
+#plotting
+site_scoresTrans <- data.frame(cbind(envTrans,scores(dbrdaTrans)$sites,labels=rownames(scores(dbrdaTrans)$sites)))
+
+#Plot across years, use this
+pdf("OrdinationTrans.pdf",width=7,height=4)
+ggplot(site_scoresTrans) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Site,color=Site),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Site),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+ggplot(site_scoresTrans) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Yearfac,color=Yearfac),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Yearfac),alpha=0.7, size=2)+
+  facet_wrap(~Site)
 
 
 
