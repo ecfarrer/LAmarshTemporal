@@ -7,6 +7,10 @@ library(vegan)
 
 options(contrasts=c("contr.helmert","contr.poly"))
 
+save.image("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/LAmarshTemporal/workspace.Rdata")  # 
+load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/LAmarshTemporal/workspace.Rdata")  # 
+
+
 dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2022.csv",stringsAsFactors = T,row.names=1)
 
 dat2<-dat%>%
@@ -502,19 +506,56 @@ speTYc<-decostand(speTYb,method="log",logbase=10)
 #speBPd<-speBPc/rowSums(speBPc)
 
 #capscale and dbrda are doing the same thing.
-dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfac,data = envTY)
-dbrdaTY <- capscale(sqrt(vegdist(speTYc,method="bray",binary=F)) ~ Site*Transect*Yearfac,data = envTY)
-dbrdaTY <- capscale(speTYc ~ Transect*Yearfac,distance="bray",data = envTY,add="cailliez") #these are the same
+dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfac,data = envTY,add="lingoes")
+#dbrdaTY <- capscale(sqrt(vegdist(speTYc,method="bray",binary=F)) ~ Site*Transect*Yearfac,data = envTY) #trying sqrt of bray so that it is metric and no negative eiganvalues, this is very very similar to just the regular bray output
+#dbrdaTY <- capscale(speTYc ~ Site*Transect*Yearfac,distance="bray",data = envTY,add="lingoes") #this is the same as the first model, ,add="lingoes"
 summary(dbrdaTY)
 #plot(dbrdaBP)
 
-#plotting
+#explains that lingeos adds random variation to the dissimilarities: https://rdrr.io/cran/vegan/man/varpart.html
+
+#Plotting
 site_scoresTY <- data.frame(cbind(envTY,scores(dbrdaTY)$sites,labels=rownames(scores(dbrdaTY)$sites)))
 
 hullTY <- site_scoresTY %>%
   group_by(Transect,Site,Year) %>%
   slice(chull(CAP1,CAP2))
 
+#using lingoes USE THIS
+pdf("Ordination1722lingoeshulls.pdf",width=6,height=6)
+ggplot(site_scoresTY) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1") +  # 
+  ylab("RDA 2") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_polygon(data=hullTY,aes(x=CAP1,y=CAP2, fill=Transect,colour = Transect),alpha=.2)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect), size=2)+
+  #facet_wrap(~Site*Year)
+  facet_grid(rows=vars(Site),cols=vars(Year))
+dev.off()
+
+#using lingeos with ellipses
+pdf("Ordination1722lingoesellipses.pdf",width=6,height=6)
+ggplot(site_scoresTY) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1") +  # 
+  ylab("RDA 2") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  #geom_polygon(data=hullTY,aes(x=CAP1,y=CAP2, fill=Transect,colour = Transect),alpha=.2)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect), size=2)+
+  #facet_wrap(~Site*Year)
+  facet_grid(rows=vars(Site),cols=vars(Year))
+dev.off()
+
+#using raw bray curtis
 pdf("Ordination1722.pdf",width=6,height=6)
 ggplot(site_scoresTY) + 
   geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
@@ -530,6 +571,46 @@ ggplot(site_scoresTY) +
   #facet_wrap(~Site*Year)
   facet_grid(rows=vars(Site),cols=vars(Year))
 dev.off()
+
+
+#Variance explained by axes using legendre and legendre chapter 9 2012
+#this is just checking some of the equations that were in the legendre and legendre chapter 9 2012 book
+temp<-dbrda(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfac,data = envTY)
+dtrans<-sqrt((vegdist(speTYc,method="bray",binary=F))^2+2*0.794282) #the lingoes transformation with .7942 as the constant
+temp3<-dbrda(dtrans~ Site*Transect*Yearfac,data = envTY)
+temp2<-dbrda(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfac,data = envTY,add="lingoes")
+min(temp$CA$eig)=0.794282
+(15.432+1*0.794282)/(46.7927+(167-1)*0.794282) #equation page 506, this just gives you the "new" variance explained using raw bray curtis, and converts it to the lingoes version. this is not that useful b/c we can just run the lingoes model adn get this same number. but it made me understand exactly how the constant is added to the distance matrix
+17.054/316.0547
+
+#from https://github.com/vegandevs/vegan/blob/0ddfa4e52444de119bf5baae200eef0c05b12c23/R/GowerDblcen.R#L40
+#This does what it says it does, and gives the c constant that is used in add="lingoes" 1.622) but it is odd that we can add a smaller constant (the max negative eigenvalue from a dbrda of the original data, 0.794) and still get a solution that does not have negative eigenvalues. maybe it is because this is doing a pcoa (unconstrained) whereas the dbrda is obviously constrained! yes! that is exactly what it is doing! see temp code right below
+temp<-dbrda(vegdist(speTYc,method="bray",binary=F)~ 1,data = envTY)
+min(temp$CA$eig)
+
+#these two functions were found on the github vegan respository. 
+GowerDblcen <- function(x, na.rm = TRUE)
+{
+  cnt <- colMeans(x, na.rm = na.rm)
+  x <- sweep(x, 2L, cnt, check.margin = FALSE)
+  cnt <- rowMeans(x, na.rm = na.rm)
+  sweep(x, 1L, cnt, check.margin = FALSE)
+}
+
+addLingoes <- function(d)
+{
+  ## smallest negative eigenvalue (or zero)
+  d <- -GowerDblcen(d^2)/2
+  e <- eigen(d, symmetric = TRUE, only.values = TRUE)$values
+  out <- min(e)
+  max(-out, 0)
+}
+d<-as.matrix(vegdist(speTYc,method="bray",binary=F))
+temp2<-addLingoes(as.matrix(vegdist(speTYc,method="bray",binary=F)))
+
+
+
+
 
 
 
