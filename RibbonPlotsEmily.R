@@ -7,7 +7,9 @@ library(riverplot)
 library(tidyverse)
 
 #rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Phragbiomass2023.csv") #old with only bins 1-4
-rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Phragnative1.csv")
+#rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Phragnative1.csv") #old, no 2023
+
+rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Corrected_Biomass2023.csv") #
 
 head(rivdat)
 View(rivdat)
@@ -19,16 +21,60 @@ View(rivdat)
 #Bin5: Percentile-based intervals based on the total dataset's 33rd and 66th percentile values acting as cutoffs from the base year 2017
 #Bin6: Percentile-based intervals sub-setted by Site using 33rd and 66th percentile values acting as cutoffs for site-specific groupings from the base year 2017
 
-#plot 112 and 113 are missing in year2
+#Bayou Sauvage weirdness
+#plot 112 and 113 are missing in year2 (2018) (not found so data not taken)
+#in 2023 plot 109 had nothing in it (it was surveyed and had nothing) and 111 had only 2 stems of baccharis, no phrag. baccharis was not measured for biomass, but I can still call this plot a "low" phrag b/c it was 100% native
 
 #finding percentiles
-#upshot is I'm not sure how Coleman got the percentiles....oh maybe he did it in terms of relative biomass not just Phrag biomass
+#Coleman did it in terms of relative biomass not just Phrag biomass
 quantile(rivdat$Phragmites.australis.Biomass.g., c(.33, .66)) 
 #odd the 33rd percentile is 0, how did that go down? i think this is what happened and it is awkward
 cbind(rivdat$Phragmites.australis.Biomass.g.,rivdat$Bin3)
 length(which(rivdat$Bin3=="Low"))
 length(which(rivdat$Bin3=="Mid"))
 length(which(rivdat$Bin3=="High"))
+
+##### Checking bin 6 for all years #####
+BPbin6<-rivdat%>%
+  filter(Site=="Barataria",Year=="2017")
+#quantile(BPbin6$Phragmites.australis.Biomass.g., c(.33, .66)) 
+quantile(BPbin6$Percentage.Phrag, c(.33, .66)) 
+BPbin6b<-rivdat%>%
+  filter(Site=="Barataria")%>%
+  mutate(bin6b = cut(Percentage.Phrag, c(-1, 0.1259551, 0.5289319,1), labels=c("Low","Mid","High") ,right = T))
+which(BPbin6b$Bin6!=BPbin6b$bin6b)
+
+#write.csv(BPbin6b,"BPbin6b.csv")
+
+BBbin6<-rivdat%>%
+  filter(Site=="Big Branch",Year=="2017")
+quantile(BBbin6$Percentage.Phrag, c(.33, .66)) 
+BBbin6b<-rivdat%>%
+  filter(Site=="Big Branch")%>%
+  mutate(bin6b = cut(Percentage.Phrag, c(-1, 0.2457260, 0.9054701,1), labels=c("Low","Mid","High") ,right = T))
+which(BBbin6b$Bin6!=BBbin6b$bin6b)
+
+BSbin6<-rivdat%>%
+  filter(Site=="Bayou Sauvage",Year=="2017")
+quantile(BSbin6$Percentage.Phrag, c(.33, .66)) 
+BSbin6b<-rivdat%>%
+  filter(Site=="Bayou Sauvage")%>%
+  mutate(bin6b = cut(Percentage.Phrag, c(-1, 0.4081905, 0.9775267,1), labels=c("Low","Mid","High") ,right = T))
+#plot 122 is low for me, mid for Coleman
+which(BSbin6b$Bin6!=BSbin6b$bin6b)
+BSbin6b%>%
+  filter(Plot%in%c(109,111))
+BSbin6b%>%
+  filter(Plot%in%c(113))
+
+PRbin6<-rivdat%>%
+  filter(Site=="Pearl River",Year=="2017")
+quantile(PRbin6$Percentage.Phrag, c(.33, .66)) 
+PRbin6b<-rivdat%>%
+  filter(Site=="Pearl River")%>%
+  mutate(bin6b = cut(Percentage.Phrag, c(-1, 0.0550037, 0.4517804,1), labels=c("Low","Mid","High") ,right = T))
+which(PRbin6b$Bin6!=PRbin6b$bin6b)
+PRbin6b[c(14,89),]
 
 
 ##### Using Bin1 #####
@@ -208,6 +254,72 @@ plot(RP, plot_area=0.9)
 
 
 
+##### Separating by site - Barataria 2023 #####
+
+
+##### Using Bin6 #####
+#rivdatBP<-rivdat%>%
+#  filter(Site=="Barataria")%>%
+BPbin6b<-BPbin6b%>%
+  select(-Bin6)%>%
+  dplyr::rename(Bin6=bin6b)
+rivdatBP<-BPbin6b%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  mutate(y1=recode_factor(y1,"N"="N1","T"="T1","P"="P1"))%>%
+  mutate(y2=recode_factor(y2,"N"="N2","T"="T2","P"="P2"))%>%
+  mutate(y3=recode_factor(y3,"N"="N3","T"="T3","P"="P3"))%>%
+  mutate(y4=recode_factor(y4,"N"="N4","T"="T4","P"="P4"))%>%
+  mutate(y5=recode_factor(y5,"N"="N5","T"="T5","P"="P5"))%>%
+  mutate(y6=recode_factor(y6,"N"="N6","T"="T6","P"="P6"))%>%
+  mutate(y7=recode_factor(y7,"N"="N7","T"="T7","P"="P7"))%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  mutate(ones=1)%>%
+  group_by(years,change)%>%
+  summarise(sum=sum(ones))%>%
+  mutate(change=factor(change,levels=c("N1_N2", "N1_T2", "N1_P2", "T1_N2", "T1_T2", "T1_P2", "P1_N2", "P1_T2", "P1_P2",
+                                       "N2_N3", "N2_T3", "N2_P3", "T2_N3", "T2_T3", "T2_P3", "P2_N3", "P2_T3", "P2_P3",
+                                       "N3_N4", "N3_T4", "N3_P4", "T3_N4", "T3_T4", "T3_P4", "P3_N4", "P3_T4", "P3_P4",
+                                       "N4_N5", "N4_T5", "N4_P5", "T4_N5", "T4_T5", "T4_P5", "P4_N5", "P4_T5", "P4_P5",
+                                       "N5_N6", "N5_T6", "N5_P6", "T5_N6", "T5_T6", "T5_P6", "P5_N6", "P5_T6", "P5_P6",
+                                       "N6_N7", "N6_T7", "N6_P7", "T6_N7", "T6_T7", "T6_P7", "P6_N7", "P6_T7", "P6_P7")))%>%
+  arrange(change)%>%
+  separate(change, c("N1","N2"), remove=F)
+
+as.data.frame(rivdatBP)
+
+
+nodesp <- structure(
+  list(
+    ID = structure(c(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L,12L,13L,14L,15L, 16L,17L,18L,19L,20L,21L), .Label = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7"), class = "factor"),
+    x = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 3L,4L,4L,4L,5L,5L,5L, 6L, 6L, 6L, 7L, 7L, 7L),
+    col = c("red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue", "red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue")), 
+  .Names = c("ID", "x", "col"),
+  row.names = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7" ), class = "data.frame")
+
+edgesp <- structure(
+  list(
+    N1 = rivdatBP$N1,
+    N2 = rivdatBP$N2,
+    Value = rivdatBP$sum
+  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -42L), class = "data.frame")#
+
+RPBP <- makeRiver(nodesp, edgesp)
+plot(RPBP, plot_area=0.9)
+
+
+
 
 ##### Separating by site - Barataria #####
 
@@ -269,6 +381,73 @@ plot(RPBP, plot_area=0.9)
 
 
 
+##### Separating by site - Big Branch 2023 #####
+
+
+##### Using Bin6 #####
+#rivdatBB<-rivdat%>%
+#  filter(Site=="Big Branch")%>%
+BBbin6b<-BBbin6b%>%
+  select(-Bin6)%>%
+  dplyr::rename(Bin6=bin6b)
+rivdatBB<-BBbin6b%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  mutate(y1=recode_factor(y1,"N"="N1","T"="T1","P"="P1"))%>%
+  mutate(y2=recode_factor(y2,"N"="N2","T"="T2","P"="P2"))%>%
+  mutate(y3=recode_factor(y3,"N"="N3","T"="T3","P"="P3"))%>%
+  mutate(y4=recode_factor(y4,"N"="N4","T"="T4","P"="P4"))%>%
+  mutate(y5=recode_factor(y5,"N"="N5","T"="T5","P"="P5"))%>%
+  mutate(y6=recode_factor(y6,"N"="N6","T"="T6","P"="P6"))%>%
+  mutate(y7=recode_factor(y7,"N"="N7","T"="T7","P"="P7"))%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  mutate(ones=1)%>%
+  group_by(years,change)%>%
+  summarise(sum=sum(ones))%>%
+  mutate(change=factor(change,levels=c("N1_N2", "N1_T2", "N1_P2", "T1_N2", "T1_T2", "T1_P2", "P1_N2", "P1_T2", "P1_P2",
+                                       "N2_N3", "N2_T3", "N2_P3", "T2_N3", "T2_T3", "T2_P3", "P2_N3", "P2_T3", "P2_P3",
+                                       "N3_N4", "N3_T4", "N3_P4", "T3_N4", "T3_T4", "T3_P4", "P3_N4", "P3_T4", "P3_P4",
+                                       "N4_N5", "N4_T5", "N4_P5", "T4_N5", "T4_T5", "T4_P5", "P4_N5", "P4_T5", "P4_P5",
+                                       "N5_N6", "N5_T6", "N5_P6", "T5_N6", "T5_T6", "T5_P6", "P5_N6", "P5_T6", "P5_P6",
+                                       "N6_N7", "N6_T7", "N6_P7", "T6_N7", "T6_T7", "T6_P7", "P6_N7", "P6_T7", "P6_P7")))%>%
+  arrange(change)%>%
+  separate(change, c("N1","N2"), remove=F)
+
+as.data.frame(rivdatBB)
+
+
+nodesp <- structure(
+  list(
+    ID = structure(c(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L,12L,13L,14L,15L, 16L,17L,18L,19L,20L,21L), .Label = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7"), class = "factor"),
+    x = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 3L,4L,4L,4L,5L,5L,5L, 6L, 6L, 6L,7L,7L,7L),
+    col = c("red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue", "red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue")), 
+  .Names = c("ID", "x", "col"),
+  row.names = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7" ), class = "data.frame")
+
+edgesp <- structure(
+  list(
+    N1 = rivdatBB$N1,
+    N2 = rivdatBB$N2,
+    Value = rivdatBB$sum
+  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -33L), class = "data.frame")#
+
+RPBB <- makeRiver(nodesp, edgesp)
+plot(RPBB, plot_area=0.9)
+
+
+
+
 ##### Separating by site - Big Branch #####
 
 
@@ -321,12 +500,87 @@ edgesp <- structure(
     N1 = rivdatBB$N1,
     N2 = rivdatBB$N2,
     Value = rivdatBB$sum
-  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -25L), class = "data.frame")#
+  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -29L), class = "data.frame")#
 
 RPBB <- makeRiver(nodesp, edgesp)
 plot(RPBB, plot_area=0.9)
 
 
+
+
+##### Separating by site - Bayou Sauvage 2023 #####
+
+
+##### Using Bin6 #####
+#rivdatBS<-rivdat%>%
+#  filter(Site=="Bayou Sauvage")%>%
+BSbin6b<-BSbin6b%>%
+  select(-Bin6)%>%
+  dplyr::rename(Bin6=bin6b)
+#add a row for 111 being bin6 Low
+dim(BSbin6b)# 143 x 66
+BSbin6c<-rbind(BSbin6b,rep(NA,66))
+BSbin6c$Plot[144]<-111
+BSbin6c$Bin6[144]<-"Low"
+BSbin6c$Year[144]<-2023
+BSbin6d<-BSbin6c%>%
+  arrange(Year,Plot)%>%
+  filter(Plot!=109,Plot!=112,Plot!=113)
+
+rivdatBS<-BSbin6d%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  mutate(y1=recode_factor(y1,"N"="N1","T"="T1","P"="P1"))%>%
+  mutate(y2=recode_factor(y2,"N"="N2","T"="T2","P"="P2"))%>%
+  mutate(y3=recode_factor(y3,"N"="N3","T"="T3","P"="P3"))%>%
+  mutate(y4=recode_factor(y4,"N"="N4","T"="T4","P"="P4"))%>%
+  mutate(y5=recode_factor(y5,"N"="N5","T"="T5","P"="P5"))%>%
+  mutate(y6=recode_factor(y6,"N"="N6","T"="T6","P"="P6"))%>%
+  mutate(y7=recode_factor(y7,"N"="N7","T"="T7","P"="P7"))%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  mutate(ones=1)%>%
+  group_by(years,change)%>%
+  summarise(sum=sum(ones))%>%
+  mutate(change=factor(change,levels=c("N1_N2", "N1_T2", "N1_P2", "T1_N2", "T1_T2", "T1_P2", "P1_N2", "P1_T2", "P1_P2",
+                                       "N2_N3", "N2_T3", "N2_P3", "T2_N3", "T2_T3", "T2_P3", "P2_N3", "P2_T3", "P2_P3",
+                                       "N3_N4", "N3_T4", "N3_P4", "T3_N4", "T3_T4", "T3_P4", "P3_N4", "P3_T4", "P3_P4",
+                                       "N4_N5", "N4_T5", "N4_P5", "T4_N5", "T4_T5", "T4_P5", "P4_N5", "P4_T5", "P4_P5",
+                                       "N5_N6", "N5_T6", "N5_P6", "T5_N6", "T5_T6", "T5_P6", "P5_N6", "P5_T6", "P5_P6",
+                                       "N6_N7", "N6_T7", "N6_P7", "T6_N7", "T6_T7", "T6_P7", "P6_N7", "P6_T7", "P6_P7")))%>%
+  arrange(change)%>%
+  separate(change, c("N1","N2"), remove=F)
+
+as.data.frame(rivdatBS)
+
+
+nodesp <- structure(
+  list(
+    ID = structure(c(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L,12L,13L,14L,15L, 16L,17L,18L,19L,20L,21L), .Label = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7"), class = "factor"),
+    x = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 3L,4L,4L,4L,5L,5L,5L, 6L, 6L, 6L,7L,7L,7L),
+    col = c("red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue", "red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue")), 
+  .Names = c("ID", "x", "col"),
+  row.names = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7" ), class = "data.frame")
+
+edgesp <- structure(
+  list(
+    N1 = rivdatBS$N1,
+    N2 = rivdatBS$N2,
+    Value = rivdatBS$sum
+  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -35L), class = "data.frame")#
+
+RPBS <- makeRiver(nodesp, edgesp)
+plot(RPBS, plot_area=0.9)
 
 
 ##### Separating by site - Bayou Sauvage #####
@@ -386,6 +640,71 @@ edgesp <- structure(
 RPBS <- makeRiver(nodesp, edgesp)
 plot(RPBS, plot_area=0.9)
 
+
+
+##### Separating by site - Pearl River 2023 #####
+
+
+##### Using Bin6 #####
+#rivdatPR<-rivdat%>%
+#  filter(Site=="Pearl River")%>%
+PRbin6b<-PRbin6b%>%
+  select(-Bin6)%>%
+  dplyr::rename(Bin6=bin6b)
+rivdatPR<-PRbin6b%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  mutate(y1=recode_factor(y1,"N"="N1","T"="T1","P"="P1"))%>%
+  mutate(y2=recode_factor(y2,"N"="N2","T"="T2","P"="P2"))%>%
+  mutate(y3=recode_factor(y3,"N"="N3","T"="T3","P"="P3"))%>%
+  mutate(y4=recode_factor(y4,"N"="N4","T"="T4","P"="P4"))%>%
+  mutate(y5=recode_factor(y5,"N"="N5","T"="T5","P"="P5"))%>%
+  mutate(y6=recode_factor(y6,"N"="N6","T"="T6","P"="P6"))%>%
+  mutate(y7=recode_factor(y7,"N"="N7","T"="T7","P"="P7"))%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  mutate(ones=1)%>%
+  group_by(years,change)%>%
+  summarise(sum=sum(ones))%>%
+  mutate(change=factor(change,levels=c("N1_N2", "N1_T2", "N1_P2", "T1_N2", "T1_T2", "T1_P2", "P1_N2", "P1_T2", "P1_P2",
+                                       "N2_N3", "N2_T3", "N2_P3", "T2_N3", "T2_T3", "T2_P3", "P2_N3", "P2_T3", "P2_P3",
+                                       "N3_N4", "N3_T4", "N3_P4", "T3_N4", "T3_T4", "T3_P4", "P3_N4", "P3_T4", "P3_P4",
+                                       "N4_N5", "N4_T5", "N4_P5", "T4_N5", "T4_T5", "T4_P5", "P4_N5", "P4_T5", "P4_P5",
+                                       "N5_N6", "N5_T6", "N5_P6", "T5_N6", "T5_T6", "T5_P6", "P5_N6", "P5_T6", "P5_P6",
+                                       "N6_N7", "N6_T7", "N6_P7", "T6_N7", "T6_T7", "T6_P7", "P6_N7", "P6_T7", "P6_P7")))%>%
+  arrange(change)%>%
+  separate(change, c("N1","N2"), remove=F)
+
+as.data.frame(rivdatPR)
+
+
+nodesp <- structure(
+  list(
+    ID = structure(c(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L,12L,13L,14L,15L, 16L,17L,18L,19L,20L,21L), .Label = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7"), class = "factor"),
+    x = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 3L,4L,4L,4L,5L,5L,5L, 6L, 6L, 6L,7L,7L,7L),
+    col = c("red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue", "red","darkgreen","blue","red","darkgreen","blue","red","darkgreen","blue")), 
+  .Names = c("ID", "x", "col"),
+  row.names = c("N1", "T1", "P1", "N2", "T2", "P2","N3","T3", "P3", "N4","T4","P4","N5","T5","P5","N6","T6","P6","N7","T7","P7" ), class = "data.frame")
+
+edgesp <- structure(
+  list(
+    N1 = rivdatPR$N1,
+    N2 = rivdatPR$N2,
+    Value = rivdatPR$sum
+  ), .Names = c("N1", "N2", "Value"), row.names = c(NA, -30L), class = "data.frame")#
+
+RPPR <- makeRiver(nodesp, edgesp)
+plot(RPPR, plot_area=0.9)
 
 
 
