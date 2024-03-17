@@ -12,6 +12,7 @@ load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/T
 
 
 dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2022.csv",stringsAsFactors = T,row.names=1)
+dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2023.csv",stringsAsFactors = T,row.names=1)
 
 dat2<-dat%>%
   filter(Site%in%c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))%>%
@@ -139,8 +140,41 @@ dev.off()
 
 
 
+##### Regressions of phrag vs species #####
 
-###### Diversity #####
+head(dat2)
+
+pdf("natabunvsphrag.pdf",width=6.5,height=4.5)
+#ggplot(data=dat2, aes(x=Phragmites.australis,y = NatAbun))+#,color=Transect
+ggplot(data=dat2, aes(x=log(Phragmites.australis+1),y = log(NatAbun+1)))+#,color=Transect
+  labs(x="Phragmites abundance",y="Native abundance") +
+  #ylim(20,110)+
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+#geom_text(aes(y = survivalpercent+se, label = c(" "," "," "," ","a","ab","b","ab"),x = Treatment),colour="black", size=3,vjust = -1)
+dev.off()
+
+head(dat2)
+dat2$NatAbunln<-log(dat2$NatAbun+1)
+dat2$Phragmites.australisln<-log(dat2$Phragmites.australis+1)
+
+m1 <- lme(
+  NatAbunln ~ Site + Phragmites.australisln + Site*Phragmites.australisln+Yearfac + Yearfac*Site ,
+  correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = dat2,na.action=na.omit)
+summary(1)
+anova(m1,type="marginal")
+
+hist(resid(m1,type="normalized"))
+plot(dat2$Phragmites.australisln[is.na(dat2$Phragmites.australisln)==F],resid(m1,type="normalized"))
+
+
+
+
+##### Diversity #####
 
 #Native abundance
 dat3<-dat2%>%
@@ -306,6 +340,91 @@ temp<-dat2%>%
 min(temp)
 max(temp)
 
+##### Ordination - Barataria 2023 #####
+
+##Barataria all years
+#questions I need to decide on: 
+#relative abundance vs absolute abundance (I used relative abun before)
+#bray vs jaccard (I used jaccard before)
+#dbRDA vs CCA vs NMDS
+datBP<-dat2%>%
+  filter(Site=="Barataria"&Year%in%c(2017,2018,2019,2020,2021,2022,2023))
+speBP<-datBP%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Barataria
+speBPb<-speBP[colSums(speBP>0) > 0]
+envBP<-datBP%>%
+  select(Year:DeadPhragStems,Yearfac)
+#take out eleocharis
+#speBPb<-select(speBPb,-Eleocharis.sp.)
+#calculate relative abundance
+speBPc<-decostand(speBPb,method="log",logbase=10)
+#speBPd<-speBPc/rowSums(speBPc)
+
+#capscale and dbrda are doing the same thing.
+dbrdaBP <- capscale(vegdist(speBPc,method="bray",binary=F) ~ Transect*Yearfac,data = envBP) #
+#dbrdaBP <- capscale(speBPc ~ Transect*Yearfac,distance="bray",data = envBP) #these are the same
+summary(dbrdaBP)
+#plot(dbrdaBP)
+
+#plotting
+site_scoresBP <- data.frame(cbind(envBP,scores(dbrdaBP)$sites,labels=rownames(scores(dbrdaBP)$sites)))
+
+#Plot across years, use this
+pdf("OrdinationBarataria.pdf",width=7,height=4)
+ggplot(site_scoresBP) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (14.2%)") +  # 
+  ylab("RDA 2 (6.6%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+#Plot with facet wrap by transect, color by year
+ggplot(site_scoresBP) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (%)") +
+  ylab("RDA 2 (%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Year),alpha=0.7, size=2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Yearfac),level=.95)+
+  facet_wrap(~Transect)
+
+
+#averaging to get centroids and putting it on one pane
+
+site_scoresBP2<-site_scoresBP%>%
+  group_by(Year,Transect)%>%
+  summarise(CAP1=mean(CAP1),CAP2=mean(CAP2))
+data.frame(site_scoresBP2)
+
+ggplot(site_scoresBP2) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  geom_path(aes(x=CAP1,y=CAP2,group=Transect))+
+  geom_segment(aes(x=site_scoresBP2$CAP1[16],y=site_scoresBP2$CAP2[16],xend=site_scoresBP2$CAP1[19],yend=site_scoresBP2$CAP2[19]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBP2$CAP1[17],y=site_scoresBP2$CAP2[17],xend=site_scoresBP2$CAP1[20],yend=site_scoresBP2$CAP2[20]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBP2$CAP1[18],y=site_scoresBP2$CAP2[18],xend=site_scoresBP2$CAP1[21],yend=site_scoresBP2$CAP2[21]),arrow=arrow(length = unit(0.35, "cm")))
+  
+  
+  
+  
+
 ##### Ordination - Barataria #####
 
 ##Barataria all years
@@ -365,6 +484,66 @@ ggplot(site_scoresBP) +
   facet_wrap(~Transect)
 
 
+##### Ordination - Bayou Sauvage 2023 #####
+##Bayou Sauvage all years, needed to take out plots that had zero plants
+datBS<-dat2%>%
+  filter(Site=="Bayou Sauvage"&Year%in%c(2017,2018,2019,2020,2021,2022,2023))%>% #
+  filter(!is.na(Phragmites.australis))%>%
+  filter(NatAbun+Phragmites.australis>0)
+speBS<-datBS%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Bayou Sauvage
+speBSb<-speBS[colSums(speBS>0) > 0]
+envBS<-datBS%>%
+  select(Year:DeadPhragStems,Yearfac)
+speBSc<-decostand(speBSb,method="log",logbase=10)
+#speBSd<-speBSc/rowSums(speBSc)
+
+#capscale
+dbrdaBS <- capscale(vegdist(speBSc,method="bray",binary=F) ~ Transect*Yearfac,data = envBS)
+summary(dbrdaBS)
+
+site_scoresBS <- data.frame(cbind(envBS,scores(dbrdaBS)$sites,labels=rownames(scores(dbrdaBS)$sites)))
+
+pdf("OrdinationBayouSauvage.pdf",width=7,height=4)
+ggplot(site_scoresBS) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (33.6%)") +
+  ylab("RDA 2 (10.3%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+
+#averaging to get centroids and putting it on one pane
+
+site_scoresBS2<-site_scoresBS%>%
+  group_by(Year,Transect)%>%
+  summarise(CAP1=mean(CAP1),CAP2=mean(CAP2))
+data.frame(site_scoresBS2)
+
+ggplot(site_scoresBS2) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  geom_path(aes(x=CAP1,y=CAP2,group=Transect))+
+  geom_segment(aes(x=site_scoresBS2$CAP1[16],y=site_scoresBS2$CAP2[16],xend=site_scoresBS2$CAP1[19],yend=site_scoresBS2$CAP2[19]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBS2$CAP1[17],y=site_scoresBS2$CAP2[17],xend=site_scoresBS2$CAP1[20],yend=site_scoresBS2$CAP2[20]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBS2$CAP1[18],y=site_scoresBS2$CAP2[18],xend=site_scoresBS2$CAP1[21],yend=site_scoresBS2$CAP2[21]),arrow=arrow(length = unit(0.35, "cm")))
+
+
+
 
 
 ##### Ordination - Bayou Sauvage #####
@@ -419,8 +598,66 @@ dev.off()
 
 
 
+##### Ordination - Big Branch 2023 #####
+datBB<-dat2%>%
+  filter(Site=="Big Branch"&Year%in%c(2017,2018,2019,2020,2021,2022,2023))
+speBB<-datBB%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in Big Branch
+speBBb<-speBB[colSums(speBB>0) > 0]
+envBB<-datBB%>%
+  select(Year:DeadPhragStems,Yearfac)
+speBBc<-decostand(speBBb,method="log",logbase=10)
+#doing relative abundance after log transformation hardly changes anything in the ordination plot. doing log transformation on raw data and comparing to raw data plot is SUPER different - the rel abun ordination looks like the log transformed ordination, so the original raw ordination is basically showing differences in abundance
+#speBBd<-speBBc/rowSums(speBBc)
 
-##### Ordination - Big Branch all years #####
+dbrdaBB <- capscale(vegdist(speBBc,method="bray",binary=F) ~ Transect*Yearfac,data = envBB)
+summary(dbrdaBB)
+
+site_scoresBB <- data.frame(cbind(envBB,scores(dbrdaBB)$sites,labels=rownames(scores(dbrdaBB)$sites)))
+
+pdf("OrdinationBigBranch.pdf",width=7,height=4)
+ggplot(site_scoresBB) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (23.6%)") +
+  ylab("RDA 2 (8.4%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
+
+#averaging to get centroids and putting it on one pane
+
+site_scoresBB2<-site_scoresBB%>%
+  group_by(Year,Transect)%>%
+  summarise(CAP1=mean(CAP1),CAP2=mean(CAP2))
+data.frame(site_scoresBB2)
+
+ggplot(site_scoresBB2) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  geom_path(aes(x=CAP1,y=CAP2,group=Transect))+
+  geom_segment(aes(x=site_scoresBB2$CAP1[16],y=site_scoresBB2$CAP2[16],xend=site_scoresBB2$CAP1[19],yend=site_scoresBB2$CAP2[19]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBB2$CAP1[17],y=site_scoresBB2$CAP2[17],xend=site_scoresBB2$CAP1[20],yend=site_scoresBB2$CAP2[20]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresBB2$CAP1[18],y=site_scoresBB2$CAP2[18],xend=site_scoresBB2$CAP1[21],yend=site_scoresBB2$CAP2[21]),arrow=arrow(length = unit(0.35, "cm")))
+
+
+
+
+
+
+##### Ordination - Big Branch #####
 datBB<-dat2%>%
   filter(Site=="Big Branch"&Year%in%c(2017,2018,2019,2020,2021,2022))
 speBB<-datBB%>%
@@ -453,10 +690,12 @@ ggplot(site_scoresBB) +
 dev.off()
 
 
-##### Ordination - Pear River all years #####
+
+
+##### Ordination - Pear River 2023 #####
 #2019 is weird b/c all the phrag plots had lots of eleocharis and none of the other plots did
 datPR<-dat2%>%
-  filter(Site=="Pearl River"&Year%in%c(2017,2018,2019,2020,2021,2022))
+  filter(Site=="Pearl River"&Year%in%c(2017,2018,2019,2020,2021,2022,2023))
 spePR<-datPR%>%
   select(Phragmites.australis:Vigna.luteola)
 #Take out Species that didn't exist in PR
@@ -485,6 +724,63 @@ ggplot(site_scoresPR) +
   facet_wrap(~Year)
 dev.off()
 
+#averaging to get centroids and putting it on one pane
+
+site_scoresPR2<-site_scoresPR%>%
+  group_by(Year,Transect)%>%
+  summarise(CAP1=mean(CAP1),CAP2=mean(CAP2))
+data.frame(site_scoresPR2)
+
+ggplot(site_scoresPR2) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (15.1%)") +  # 
+  ylab("RDA 2 (6.7%)") +  # 
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  geom_path(aes(x=CAP1,y=CAP2,group=Transect))+
+  geom_segment(aes(x=site_scoresPR2$CAP1[16],y=site_scoresPR2$CAP2[16],xend=site_scoresPR2$CAP1[19],yend=site_scoresPR2$CAP2[19]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresPR2$CAP1[17],y=site_scoresPR2$CAP2[17],xend=site_scoresPR2$CAP1[20],yend=site_scoresPR2$CAP2[20]),arrow=arrow(length = unit(0.35, "cm")))+
+  geom_segment(aes(x=site_scoresPR2$CAP1[18],y=site_scoresPR2$CAP2[18],xend=site_scoresPR2$CAP1[21],yend=site_scoresPR2$CAP2[21]),arrow=arrow(length = unit(0.35, "cm")))
+
+
+
+
+
+##### Ordination - Pear River #####
+#2019 is weird b/c all the phrag plots had lots of eleocharis and none of the other plots did
+datPR<-dat2%>%
+  filter(Site=="Pearl River"&Year%in%c(2017,2018,2019,2020,2021,2022))
+spePR<-datPR%>%
+  select(Phragmites.australis:Vigna.luteola)
+#Take out Species that didn't exist in PR
+spePRb<-spePR[colSums(spePR>0) > 0]
+envPR<-datPR%>%
+  select(Year:DeadPhragStems,Yearfac)
+spePRc<-decostand(spePRb,method="log",logbase=10)
+#spePRd<-spePRc/rowSums(spePRc)
+
+dbrdaPR <- capscale(vegdist(spePRc,method="bray",binary=F) ~ Transect*Yearfac,data = envPR)
+summary(dbrdaPR)
+
+site_scoresPR <- data.frame(cbind(envPR,scores(dbrdaPR)$sites,labels=rownames(scores(dbrdaPR)$sites)))
+
+pdf("OrdinationPearlRiver.pdf",width=7,height=4)
+ggplot(site_scoresPR) + 
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+  xlab("RDA 1 (17.9%)") +
+  ylab("RDA 2 (9.8%)") +  
+  theme_classic()+
+  theme(strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),panel.border = element_rect(fill = NA))+
+  #coord_fixed(ratio=1)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(x=CAP1, y=CAP2,fill=Transect,color=Transect),level=.95)+
+  geom_point(aes(x=CAP1, y=CAP2,color=Transect),alpha=0.7, size=2)+
+  facet_wrap(~Year)
+dev.off()
 
 
 
@@ -512,7 +808,7 @@ dbrdaTY <- capscale(vegdist(speTYc,method="bray",binary=F)~ Site*Transect*Yearfa
 summary(dbrdaTY)
 #plot(dbrdaBP)
 
-#explains that lingeos adds random variation to the dissimilarities: https://rdrr.io/cran/vegan/man/varpart.html
+#explains that lingoes adds random variation to the dissimilarities: https://rdrr.io/cran/vegan/man/varpart.html
 
 #Plotting
 site_scoresTY <- data.frame(cbind(envTY,scores(dbrdaTY)$sites,labels=rownames(scores(dbrdaTY)$sites)))
