@@ -34,7 +34,7 @@ length(which(rivdat$Bin3=="Low"))
 length(which(rivdat$Bin3=="Mid"))
 length(which(rivdat$Bin3=="High"))
 
-##### Checking bin 6 for all years #####
+##### Calculating bin 6 for all years #####
 BPbin6<-rivdat%>%
   filter(Site=="Barataria",Year=="2017")
 #quantile(BPbin6$Phragmites.australis.Biomass.g., c(.33, .66)) 
@@ -260,10 +260,10 @@ plot(RP, plot_area=0.9)
 ##### Using Bin6 #####
 #rivdatBP<-rivdat%>%
 #  filter(Site=="Barataria")%>%
-BPbin6b<-BPbin6b%>%
+BPbin6c<-BPbin6b%>%
   select(-Bin6)%>%
   dplyr::rename(Bin6=bin6b)
-rivdatBP<-BPbin6b%>%
+rivdatBP<-BPbin6c%>%
   arrange(Plot,Year)%>%
   select(Year,Plot,Bin6)%>%
   mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
@@ -387,10 +387,10 @@ plot(RPBP, plot_area=0.9)
 ##### Using Bin6 #####
 #rivdatBB<-rivdat%>%
 #  filter(Site=="Big Branch")%>%
-BBbin6b<-BBbin6b%>%
+BBbin6c<-BBbin6b%>%
   select(-Bin6)%>%
   dplyr::rename(Bin6=bin6b)
-rivdatBB<-BBbin6b%>%
+rivdatBB<-BBbin6c%>%
   arrange(Plot,Year)%>%
   select(Year,Plot,Bin6)%>%
   mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
@@ -514,20 +514,22 @@ plot(RPBB, plot_area=0.9)
 ##### Using Bin6 #####
 #rivdatBS<-rivdat%>%
 #  filter(Site=="Bayou Sauvage")%>%
-BSbin6b<-BSbin6b%>%
+BSbin6c<-BSbin6b%>%
   select(-Bin6)%>%
   dplyr::rename(Bin6=bin6b)
 #add a row for 111 being bin6 Low
-dim(BSbin6b)# 143 x 66
-BSbin6c<-rbind(BSbin6b,rep(NA,66))
-BSbin6c$Plot[144]<-111
-BSbin6c$Bin6[144]<-"Low"
-BSbin6c$Year[144]<-2023
-BSbin6d<-BSbin6c%>%
+dim(BSbin6c)# 143 x 66
+BSbin6d<-rbind(BSbin6c,rep(NA,66))
+BSbin6d$Plot[144]<-111
+BSbin6d$Bin6[144]<-"Low"
+BSbin6d$Year[144]<-2023
+BSbin6e<-BSbin6d%>%
   arrange(Year,Plot)%>%
   filter(Plot!=109,Plot!=112,Plot!=113)
+BSbin6f<-BSbin6d%>% #This is for use below in the transitions dataset part
+  arrange(Year,Plot)
 
-rivdatBS<-BSbin6d%>%
+rivdatBS<-BSbin6e%>%
   arrange(Plot,Year)%>%
   select(Year,Plot,Bin6)%>%
   mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
@@ -648,10 +650,10 @@ plot(RPBS, plot_area=0.9)
 ##### Using Bin6 #####
 #rivdatPR<-rivdat%>%
 #  filter(Site=="Pearl River")%>%
-PRbin6b<-PRbin6b%>%
+PRbin6c<-PRbin6b%>%
   select(-Bin6)%>%
   dplyr::rename(Bin6=bin6b)
-rivdatPR<-PRbin6b%>%
+rivdatPR<-PRbin6c%>%
   arrange(Plot,Year)%>%
   select(Year,Plot,Bin6)%>%
   mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
@@ -806,3 +808,1133 @@ edges <- structure(
 edges <- edges[edges$Value > 0, ]
 RP <- makeRiver(nodes, edges)
 plot(RP, plot_area=0.9)
+
+
+
+
+##### Making a dataset of transitions from the riverplots #####
+trBP<-BPbin6c%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  mutate(NN=ifelse(State1=="N"&State2=="N",1,0))%>%
+  mutate(NT=ifelse(State1=="N"&State2=="T",1,0))%>%
+  mutate(NP=ifelse(State1=="N"&State2=="P",1,0))%>%
+  mutate(TT=ifelse(State1=="T"&State2=="T",1,0))%>%
+  mutate(TN=ifelse(State1=="T"&State2=="N",1,0))%>%
+  mutate(TP=ifelse(State1=="T"&State2=="P",1,0))%>%
+  mutate(PP=ifelse(State1=="P"&State2=="P",1,0))%>%
+  mutate(PN=ifelse(State1=="P"&State2=="N",1,0))%>%
+  mutate(PT=ifelse(State1=="P"&State2=="T",1,0))
+  
+data.frame(trBP)
+trBP$Site<-"Barataria"
+
+trBB<-BBbin6c%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  mutate(NN=ifelse(State1=="N"&State2=="N",1,0))%>%
+  mutate(NT=ifelse(State1=="N"&State2=="T",1,0))%>%
+  mutate(NP=ifelse(State1=="N"&State2=="P",1,0))%>%
+  mutate(TT=ifelse(State1=="T"&State2=="T",1,0))%>%
+  mutate(TN=ifelse(State1=="T"&State2=="N",1,0))%>%
+  mutate(TP=ifelse(State1=="T"&State2=="P",1,0))%>%
+  mutate(PP=ifelse(State1=="P"&State2=="P",1,0))%>%
+  mutate(PN=ifelse(State1=="P"&State2=="N",1,0))%>%
+  mutate(PT=ifelse(State1=="P"&State2=="T",1,0))
+
+data.frame(trBB)
+trBB$Site<-"Big Branch"
+
+#use BSbin6f if you want to include plots 109,112,113, use BSbin6e if you want all the years from those plots not included
+trBS<-BSbin6f%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  #filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  filter(State1!="NA")%>%
+  filter(State2!="NA")%>%
+  mutate(NN=ifelse(State1=="N"&State2=="N",1,0))%>%
+  mutate(NT=ifelse(State1=="N"&State2=="T",1,0))%>%
+  mutate(NP=ifelse(State1=="N"&State2=="P",1,0))%>%
+  mutate(TT=ifelse(State1=="T"&State2=="T",1,0))%>%
+  mutate(TN=ifelse(State1=="T"&State2=="N",1,0))%>%
+  mutate(TP=ifelse(State1=="T"&State2=="P",1,0))%>%
+  mutate(PP=ifelse(State1=="P"&State2=="P",1,0))%>%
+  mutate(PN=ifelse(State1=="P"&State2=="N",1,0))%>%
+  mutate(PT=ifelse(State1=="P"&State2=="T",1,0))
+
+data.frame(trBS)
+trBS$Site<-"Bayou Sauvage"
+
+trPR<-PRbin6c%>%
+  arrange(Plot,Year)%>%
+  select(Year,Plot,Bin6)%>%
+  mutate(Bin6=recode_factor(Bin6,"Low"="N","Mid"="T","High"="P"))%>%
+  mutate(Year=recode_factor(Year,"2017"="y1","2018"="y2","2019"="y3","2020"="y4","2021"="y5","2022"="y6","2023"="y7"))%>%
+  pivot_wider(names_from=Year,values_from=Bin6)%>%
+  unite("y1_y2",y1,y2,sep="_",remove=F)%>%
+  unite("y2_y3",y2,y3,sep="_",remove=F)%>%
+  unite("y3_y4",y3,y4,sep="_",remove=F)%>%
+  unite("y4_y5",y4,y5,sep="_",remove=F)%>%
+  unite("y5_y6",y5,y6,sep="_",remove=F)%>%
+  unite("y6_y7",y6,y7,sep="_",remove=F)%>%
+  filter(is.na(y2)==F)%>%
+  select(Plot,y1_y2,y2_y3,y3_y4,y4_y5,y5_y6,y6_y7)%>%
+  pivot_longer(y1_y2:y6_y7,names_to="years",values_to = "change")%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  separate(change, c("State1","State2"), remove=F)%>%
+  mutate(NN=ifelse(State1=="N"&State2=="N",1,0))%>%
+  mutate(NT=ifelse(State1=="N"&State2=="T",1,0))%>%
+  mutate(NP=ifelse(State1=="N"&State2=="P",1,0))%>%
+  mutate(TT=ifelse(State1=="T"&State2=="T",1,0))%>%
+  mutate(TN=ifelse(State1=="T"&State2=="N",1,0))%>%
+  mutate(TP=ifelse(State1=="T"&State2=="P",1,0))%>%
+  mutate(PP=ifelse(State1=="P"&State2=="P",1,0))%>%
+  mutate(PN=ifelse(State1=="P"&State2=="N",1,0))%>%
+  mutate(PT=ifelse(State1=="P"&State2=="T",1,0))
+
+data.frame(trPR)
+trPR$Site<-"Pearl River"
+
+#when i first did this, i forgot that i deleted all data from plots 109, 112, and 113 b/c I was missing one year in each of those plots and it was necessary for the ribbon plot. [plot 112 and 113 missing in 2018, plot 109 had nothing in it in 2023, so im missing 5 transitions total] but I can put it back I think for these analyses. I put them back in but then realized I do still need to delete the ones with NAs 2018-2019,2023, so I filtered on that below
+tr<-rbind(trBP,trBS,trBB,trPR)
+tr2<-tr%>%
+  mutate(Year=as.numeric(recode(years,"y1_y2"="2018","y2_y3"="2019","y3_y4"="2020","y4_y5"="2021","y5_y6"="2022","y6_y7"="2023")))%>%
+  full_join(biomass4)%>%
+  filter(is.na(change)==F)%>%
+  mutate(NtoTP=ifelse(State1=="N"&State2%in%c("T","P"),1,0))%>%
+  mutate(NtoTPandTtoP=ifelse(NtoTP==1|TP==1,1,0))%>%
+  mutate(PtoNT=ifelse(State1=="P"&State2%in%c("N","T"),1,0))%>%
+  mutate(PtoNTandTtoN=ifelse(PtoNT==1|TN==1,1,0))%>%
+  mutate(stasis=case_match(change,"N_N"~1,"T_T"~1,"P_P"~1,"N_T"~0,"N_P"~0,"T_N"~0,"T_P"~0,"P_N"~0,"P_T"~0))
+#ind<-which(is.na(tr2$NN)==T)
+#View(tr2[ind,])
+
+data.frame(tr2) #504 x 42, now 499 x 42
+tail(data.frame(tr2))
+
+
+##### Figures of transitions vs salinity and water depth #####
+
+#possible transitions to test. Like Stein et al 2016, we will subset data for plots that did not transition and plots that transitoned into one of the other categories:
+#NN-NT
+#NN-NP
+#TT-TP
+#TT-TN
+#PP-PN
+#PP-PT
+
+#N going to T
+NN_NT<-tr2%>%
+  filter(change%in%c("N_N","N_T"))
+data.frame(NN_NT)
+
+ggplot(data = NN_NT, aes(x = Salinity15cmppt, y = NT)) +
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+
+#N going to P
+NN_NP<-tr2%>%
+  filter(change%in%c("N_N","N_P"))
+data.frame(NN_NP)
+
+ggplot(data = NN_NP, aes(x = Salinity15cmppt, y = NP)) +
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+
+#N going to either T or P
+NN_NT_NP<-tr2%>%
+  filter(change%in%c("N_N","N_T","N_P"))
+data.frame(NN_NT_NP)
+
+ggplot(data = NN_NT_NP, aes(x = Salinity15cmppt, y = NtoTP)) +
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+
+#N going to either T or P and T going to P
+NN_NT_NP_TT_TP<-tr2%>%
+  filter(change%in%c("N_N","N_T","N_P","T_T","T_P"))
+data.frame(NN_NT_NP_TT_TP)
+
+ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTP)) +
+  geom_point(aes(color=Site))+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTP,color=Site)) +
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)
+
+ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = TP,color=Site)) +
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)
+
+
+#Probability of going to more phrag
+ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP)) +
+  geom_point(aes(color=Site))+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more Phragmites") +
+  xlab("Salinity (ppt)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("dashed", "solid", "dashed", "solid"))
+
+#m1<-lme(NtoTPandTtoP~Site*Salinity15cmppt,random=~Site|Year,data = NN_NT_NP_TT_TP,na.action = na.omit,control =list(msMaxIter = 1000, msMaxEval = 1000)) #but this is normal, won't converge with Site|Year, which probably makes sense b/c site is a factor
+#summary(m1)
+#m1<-gls(NtoTPandTtoP~Site*Salinity15cmppt+Site*Year,data = NN_NT_NP_TT_TP,na.action = na.omit) #but this is normal
+#anova(m1,type="marginal")
+
+#b1 <- glm(NtoTPandTtoP ~ Site*Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP, na.action=na.exclude)#Site+Salinity15cmppt+Year+Site*Salinity15cmppt+Site*Year
+#summary(b1)
+#drop1(b1,test="Chisq",.~.)
+
+NN_NT_NP_TT_TP_BP<-NN_NT_NP_TT_TP%>%filter(Site=="Barataria")
+NN_NT_NP_TT_TP_BS<-NN_NT_NP_TT_TP%>%filter(Site=="Bayou Sauvage")
+NN_NT_NP_TT_TP_BB<-NN_NT_NP_TT_TP%>%filter(Site=="Big Branch")
+NN_NT_NP_TT_TP_PR<-NN_NT_NP_TT_TP%>%filter(Site=="Pearl River")
+
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#
+summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#
+summary(b1)
+drop1(b1,test="Chisq",.~.)
+
+
+library(lme4)
+b1<-glmer(NtoTPandTtoP ~ Site*Salinity15cmppt+(1|Year),family=binomial(link="cloglog"),data = NN_NT_NP_TT_TP,na.action=na.exclude)#convergence issues, singular
+drop1(b1,test="Chisq",.~.)
+
+
+
+#P going to N or T and T going to N
+PP_PN_PT_TT_TN<-tr2%>%
+  filter(change%in%c("P_P","P_N","P_T","T_T","T_N"))
+data.frame(PP_PN_PT_TT_TN)
+
+ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN)) +
+  geom_point(aes(color=Site))+
+  geom_smooth(method='glm',method.args=list(family='binomial'))+
+  facet_wrap(~Site)
+
+ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more native") +
+  xlab("Salinity (ppt)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("dashed", "solid", "solid", "dashed"))
+
+b1 <- glm(PtoNTandTtoN ~ Site*Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+PP_PN_PT_TT_TN_BP<-PP_PN_PT_TT_TN%>%filter(Site=="Barataria")
+PP_PN_PT_TT_TN_BS<-PP_PN_PT_TT_TN%>%filter(Site=="Bayou Sauvage")
+PP_PN_PT_TT_TN_BB<-PP_PN_PT_TT_TN%>%filter(Site=="Big Branch")
+PP_PN_PT_TT_TN_PR<-PP_PN_PT_TT_TN%>%filter(Site=="Pearl River")
+
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+
+
+
+
+
+#Water depth
+
+#Toward more phrag
+ggplot(data = NN_NT_NP_TT_TP, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more Phragmites") +
+  xlab("Water depth (cm)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("dashed", "solid", "dashed", "dashed"))
+
+#2020-2023 only
+NN_NT_NP_TT_TP2<-NN_NT_NP_TT_TP%>%
+  filter(Year>2019)
+
+ggplot(data = NN_NT_NP_TT_TP2, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more Phragmites") +
+  xlab("Water depth (cm)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("dashed", "solid", "dashed", "dashed"))
+
+#I don't trust the BS data b/c only four plots had waterdepth>0
+data.frame(NN_NT_NP_TT_TP2_BS%>%filter(WaterDepthcm>0))
+data.frame(NN_NT_NP_TT_TP_BP%>%filter(WaterDepthcm>15))
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+
+NN_NT_NP_TT_TP2_BP<-NN_NT_NP_TT_TP2%>%filter(Site=="Barataria")
+NN_NT_NP_TT_TP2_BS<-NN_NT_NP_TT_TP2%>%filter(Site=="Bayou Sauvage")
+NN_NT_NP_TT_TP2_BB<-NN_NT_NP_TT_TP2%>%filter(Site=="Big Branch")
+NN_NT_NP_TT_TP2_PR<-NN_NT_NP_TT_TP2%>%filter(Site=="Pearl River")
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BP, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BS, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BB, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_PR, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+
+
+#Towards less phrag
+ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more native") +
+  xlab("Water depth (cm)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
+
+#2020-2023 only
+PP_PN_PT_TT_TN2<-PP_PN_PT_TT_TN%>%
+  filter(Year>2019)
+
+ggplot(data = PP_PN_PT_TT_TN2, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site,linetype=Site)) +
+  ylab("Probability of a transition toward more native") +
+  xlab("Water depth (cm)")+
+  geom_point()+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
+  scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
+
+#I don't trust the BS data b/c only 1 plots had waterdepth>0
+data.frame(PP_PN_PT_TT_TN2_BS%>%filter(WaterDepthcm>0))
+data.frame(PP_PN_PT_TT_TN_BP%>%filter(WaterDepthcm>15))
+
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#
+#summary(b1)
+drop1(b1,test="Chisq",.~.)
+
+PP_PN_PT_TT_TN2_BP<-PP_PN_PT_TT_TN2%>%filter(Site=="Barataria")
+PP_PN_PT_TT_TN2_BS<-PP_PN_PT_TT_TN2%>%filter(Site=="Bayou Sauvage")
+PP_PN_PT_TT_TN2_BB<-PP_PN_PT_TT_TN2%>%filter(Site=="Big Branch")
+PP_PN_PT_TT_TN2_PR<-PP_PN_PT_TT_TN2%>%filter(Site=="Pearl River")
+
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN2_BP, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN2_BS, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN2_BB, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN2_PR, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+
+
+
+
+##### Contingency tables #####
+
+## For each site, 2X2 contingency table of 
+## Blah this doesn't work b/c the T stasis is in there twice, and you'd add them together to get the second column sum which doesn't make sense
+#     to pair    stasis
+# N,T
+# T,P
+
+tr2BP<-tr2%>%filter(Site=="Barataria")
+data.frame(tr2BP)
+
+tbl<-table(tr2BP$State1,tr2BP$State2);tbl
+table(tr2BP$State1,tr2BP$NtoTPandTtoP)
+chisq.test(tbl)
+
+
+###### Persistence of Phrag within a site ######
+#          Statis   to other
+# one site
+#
+
+tr2BP<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1=="P")
+#data.frame(tr2BP)
+
+tbl<-table(tr2BP$Site,tr2BP$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+##BS is persistent***
+tr2BS<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1=="P")
+#data.frame(tr2BS)
+
+tbl<-table(tr2BS$Site,tr2BS$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+tr2BB<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1=="P")
+#data.frame(tr2BB)
+
+tbl<-table(tr2BB$Site,tr2BB$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+tr2PR<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1=="P")
+#data.frame(tr2PR)
+
+tbl<-table(tr2PR$Site,tr2PR$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+#prop.test(tbl,correct=F) I'm not exactly sure why we wouldn't use this, the results are similar but not exactly that of the chisq test. but from the help file on chisq.test, it is valid to do a 1x2 chi squared test so I will stick with that.
+
+###### Persistence of Transition within a site ######
+#note 0 is changing, 1 is staying the same
+tr2BP<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1=="T")
+#data.frame(tr2BP)
+
+tbl<-table(tr2BP$Site,tr2BP$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+tr2BS<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1=="T")
+#data.frame(tr2BS)
+
+tbl<-table(tr2BS$Site,tr2BS$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BB T is nearly significant p=0.05551
+tr2BB<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1=="T")
+#data.frame(tr2BB)
+
+tbl<-table(tr2BB$Site,tr2BB$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+tr2PR<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1=="T")
+#data.frame(tr2PR)
+
+tbl<-table(tr2PR$Site,tr2PR$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+###### Persistence of Native within a site ######
+#Barataria native is persistent**
+tr2BP<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1=="N")
+#data.frame(tr2BP)
+
+tbl<-table(tr2BP$Site,tr2BP$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS native is persistent**
+tr2BS<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1=="N")
+#data.frame(tr2BS)
+
+tbl<-table(tr2BS$Site,tr2BS$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BB native is persistent **
+tr2BB<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1=="N")
+#data.frame(tr2BB)
+
+tbl<-table(tr2BB$Site,tr2BB$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#PR native is persistent**
+tr2PR<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1=="N")
+#data.frame(tr2PR)
+
+tbl<-table(tr2PR$Site,tr2PR$NtoTP);tbl
+chisq.test(tbl, correct = T)
+
+
+
+
+###### Pairwise looking at persistence of phrag ######
+
+#           stasis    to other 
+# BP Phrag
+# BS Phrag
+
+#Use the correct = TRUE option, if expected counts in any cell in the contingency table are less than 5
+#BP BS
+tr2BPBS<-tr2%>%
+  filter(Site=="Barataria"|Site=="Bayou Sauvage")%>%
+  filter(State1=="P")
+#data.frame(tr2BPBS)
+
+#tbl<-table(tr2BPBS$Site,tr2BPBS$PP);tbl
+tbl<-table(tr2BPBS$Site,tr2BPBS$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#how is this different from logistic regression. it is really close but a tiny bit different. i think is is basically the same thing
+m1<-glm(PP~Site, family=binomial,data=tr2BPBS)
+drop1(m1,test="Chisq")
+
+#BP BB
+tr2BPBB<-tr2%>%
+  filter(Site=="Barataria"|Site=="Big Branch")%>%
+  filter(State1=="P")
+#data.frame(tr2BPBB)
+
+tbl<-table(tr2BPBB$Site,tr2BPBB$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP PR
+tr2BPPR<-tr2%>%
+  filter(Site=="Barataria"|Site=="Pearl River")%>%
+  filter(State1=="P")
+#data.frame(tr2BPPR)
+
+tbl<-table(tr2BPPR$Site,tr2BPPR$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS BB
+tr2BSBB<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Big Branch")%>%
+  filter(State1=="P")
+#data.frame(tr2BSBB)
+
+tbl<-table(tr2BSBB$Site,tr2BSBB$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS PR *****different
+tr2BSPR<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Pearl River")%>%
+  filter(State1=="P")
+#data.frame(tr2BSPR)
+
+tbl<-table(tr2BSPR$Site,tr2BSPR$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+m1<-glm(PP~Site, family=binomial,data=tr2BSPR)
+drop1(m1,test="Chisq")
+
+#BB PR
+tr2BBPR<-tr2%>%
+  filter(Site=="Big Branch"|Site=="Pearl River")%>%
+  filter(State1=="P")
+#data.frame(tr2BBPR)
+
+tbl<-table(tr2BBPR$Site,tr2BBPR$PtoNT);tbl
+chisq.test(tbl, correct = FALSE)
+
+
+###### Pairwise looking at persistence of transition ######
+
+#           stasis    to other 
+# BP Trans
+# BS Trans
+
+#Use the correct = TRUE option, if expected counts in any cell in the contingency table are less than 5
+#BP BS
+tr2BPBS<-tr2%>%
+  filter(Site=="Barataria"|Site=="Bayou Sauvage")%>%
+  filter(State1=="T")
+#data.frame(tr2BPBS)
+
+tbl<-table(tr2BPBS$Site,tr2BPBS$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP BB
+tr2BPBB<-tr2%>%
+  filter(Site=="Barataria"|Site=="Big Branch")%>%
+  filter(State1=="T")
+#data.frame(tr2BPBB)
+
+tbl<-table(tr2BPBB$Site,tr2BPBB$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP PR
+tr2BPPR<-tr2%>%
+  filter(Site=="Barataria"|Site=="Pearl River")%>%
+  filter(State1=="T")
+#data.frame(tr2BPPR)
+
+tbl<-table(tr2BPPR$Site,tr2BPPR$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS BB ***** significantly different, BS is more movey, BB is more stable
+tr2BSBB<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Big Branch")%>%
+  filter(State1=="T")
+#data.frame(tr2BSBB)
+View(data.frame(tr2BSBB%>%arrange(Site,years)))
+
+tbl<-table(tr2BSBB$Site,tr2BSBB$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS PR *****nearly sig, BS is more movey, PR is more stable
+tr2BSPR<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Pearl River")%>%
+  filter(State1=="T")
+#data.frame(tr2BSPR)
+
+tbl<-table(tr2BSPR$Site,tr2BSPR$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BB PR
+tr2BBPR<-tr2%>%
+  filter(Site=="Big Branch"|Site=="Pearl River")%>%
+  filter(State1=="T")
+#data.frame(tr2BBPR)
+
+tbl<-table(tr2BBPR$Site,tr2BBPR$TT);tbl
+chisq.test(tbl, correct = FALSE)
+
+
+###### Pairwise looking at persistence of native ######
+
+#           stasis    to other 
+# BP native
+# BS native
+
+#Use the correct = TRUE option, if expected counts in any cell in the contingency table are less than 5
+#BP BS ****nearly sig, Barataria is more stable
+tr2BPBS<-tr2%>%
+  filter(Site=="Barataria"|Site=="Bayou Sauvage")%>%
+  filter(State1=="N")
+#data.frame(tr2BPBS)
+
+tbl<-table(tr2BPBS$Site,tr2BPBS$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP BB
+tr2BPBB<-tr2%>%
+  filter(Site=="Barataria"|Site=="Big Branch")%>%
+  filter(State1=="N")
+#data.frame(tr2BPBB)
+
+tbl<-table(tr2BPBB$Site,tr2BPBB$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP PR
+tr2BPPR<-tr2%>%
+  filter(Site=="Barataria"|Site=="Pearl River")%>%
+  filter(State1=="N")
+#data.frame(tr2BPPR)
+
+tbl<-table(tr2BPPR$Site,tr2BPPR$NtoTP);tbl
+chisq.test(tbl, correct = T)
+
+#BS BB
+tr2BSBB<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Big Branch")%>%
+  filter(State1=="N")
+#data.frame(tr2BSBB)
+
+tbl<-table(tr2BSBB$Site,tr2BSBB$NtoTP);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS PR ***** sig, BS is more movey, PR is more stable
+tr2BSPR<-tr2%>%
+  filter(Site=="Bayou Sauvage"|Site=="Pearl River")%>%
+  filter(State1=="N")
+#data.frame(tr2BSPR)
+
+tbl<-table(tr2BSPR$Site,tr2BSPR$NtoTP);tbl
+chisq.test(tbl, correct = T)
+
+#BB PR ***nearly sig, big branch is more movey, pr more stable
+tr2BBPR<-tr2%>%
+  filter(Site=="Big Branch"|Site=="Pearl River")%>%
+  filter(State1=="N")
+#data.frame(tr2BBPR)
+
+tbl<-table(tr2BBPR$Site,tr2BBPR$NtoTP);tbl
+chisq.test(tbl, correct = T)
+
+
+
+###### Pairwise looking directionality ######
+
+#           to pair    stasis    
+# BP phrag
+# BP trans
+
+#Use the correct = TRUE option, if expected counts in any cell in the contingency table are less than 5
+#BP, T&P
+tr2BP_TP<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1!="N",State2!="N")
+
+#1 is stasis
+tbl<-table(tr2BP_TP$State1,tr2BP_TP$stasis);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BP, N&P
+tr2BP_NP<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1!="T",State2!="T")
+
+tbl<-table(tr2BP_NP$State1,tr2BP_NP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#BP, N&T
+#sig, directionally from T to N
+tr2BP_NT<-tr2%>%
+  filter(Site=="Barataria")%>%
+  filter(State1!="P",State2!="P")
+
+tbl<-table(tr2BP_NT$State1,tr2BP_NT$stasis);tbl
+chisq.test(tbl, correct = T)
+
+
+#BS, T&P
+#significant, directionally from T to P
+tr2BS_TP<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1!="N",State2!="N")
+
+tbl<-table(tr2BS_TP$State1,tr2BS_TP$stasis);tbl
+chisq.test(tbl, correct = FALSE)
+
+#BS, N&P
+tr2BS_NP<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1!="T",State2!="T")
+
+tbl<-table(tr2BS_NP$State1,tr2BS_NP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#BS, N&T
+tr2BS_NT<-tr2%>%
+  filter(Site=="Bayou Sauvage")%>%
+  filter(State1!="P",State2!="P")
+
+tbl<-table(tr2BS_NT$State1,tr2BS_NT$stasis);tbl
+chisq.test(tbl, correct = F)
+
+
+#BB, T&P
+#nearly significant, directionally from P to T
+tr2BB_TP<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1!="N",State2!="N")
+
+tbl<-table(tr2BB_TP$State1,tr2BB_TP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#BB, N&P
+#significant, directionally from P to N
+tr2BB_NP<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1!="T",State2!="T")
+
+tbl<-table(tr2BB_NP$State1,tr2BB_NP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#BB, N&T
+#sig, directionally from T to N
+tr2BB_NT<-tr2%>%
+  filter(Site=="Big Branch")%>%
+  filter(State1!="P",State2!="P")
+
+tbl<-table(tr2BB_NT$State1,tr2BB_NT$stasis);tbl
+chisq.test(tbl, correct = F)
+
+
+#PR, T&P
+#significant, directionally from P to T
+tr2PR_TP<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1!="N",State2!="N")
+
+tbl<-table(tr2PR_TP$State1,tr2PR_TP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#PR, N&P
+tr2PR_NP<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1!="T",State2!="T")
+
+tbl<-table(tr2PR_NP$State1,tr2PR_NP$stasis);tbl
+chisq.test(tbl, correct = T)
+
+#PR, N&T
+#sigificant, directionally from T to N
+tr2PR_NT<-tr2%>%
+  filter(Site=="Pearl River")%>%
+  filter(State1!="P",State2!="P")
+
+tbl<-table(tr2PR_NT$State1,tr2PR_NT$stasis);tbl
+chisq.test(tbl, correct = T)
+
+
+
+
+
+
+##### Transition probabilities and CRMS data ####
+biomass4f #has CRMS data averaged by site
+
+
+##################note these might be wrong b/c I had some NAs that were not removed ####### REDO ALL THESE FIGURES ###############
+#### 5/6/24 unfortunately I have forgotten what this issue was about. i am not using the crms data anymore and my new tr2. I changed the tr2 to have 499 rows instead of 504 so maybe that fixed things?
+
+head(data.frame(tr2))
+
+tr3<-tr2%>%
+  select(NN:Year,NtoTP,NtoTPandTtoP)%>%
+  group_by(Site,Year)%>%
+  summarize(across(where(is.numeric), list(mean = mean, se = std.error), na.rm = TRUE))%>%
+  full_join(biomass4f)
+data.frame(tr3)
+
+
+ggplot(data=tr3, aes(x=CRMSsalinity,y = NtoTPandTtoP_mean,color=Site))+#,color=Transect
+  labs(x="Growing Season Salinity (ppt)",y="Probability of transitioning toward more Phragmites") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_errorbar(aes(ymin=NtoTPandTtoP_mean-NtoTPandTtoP_se,ymax=NtoTPandTtoP_mean+NtoTPandTtoP_se))+
+  geom_smooth(method="lm",se=F)#+
+#facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+ggplot(data=tr3, aes(x=CRMSsalinity,y = NtoTPandTtoP_mean,color=Site))+#,color=Transect
+  labs(x="Growing Season Salinity (ppt)",y="Probability of transitioning toward more Phragmites") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_errorbar(aes(ymin=NtoTPandTtoP_mean-NtoTPandTtoP_se,ymax=NtoTPandTtoP_mean+NtoTPandTtoP_se))+
+  geom_smooth(method="lm",se=F)#+
+#facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+
+
+
+
+##### Change in relative phrag biomass #####
+
+biomass<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Corrected_Biomass2023NAs.csv") #
+
+head(biomass)
+dim(biomass)
+
+biomass2<-biomass%>%
+  arrange(Year,Plot) %>%#should be arranged but just in case
+  select(Year, Site, Transect, Plot, pH, Salinity15cmppt,WaterDepthcm,Lat,Long,NatRichness,Litter,Phragmites.australis.Biomass.g.,TOTAL.BIOMASS,Percentage.Phrag,Percentage.Native, Native.Biomass ) #added Richness and Litter
+
+head(biomass2)
+
+#Make a dataframe with year 2 environmental info, and year 1 and year 2 phrag/native info
+#rows 1-84, 85-168, 169-252,253-336,337-420,421-504,505-588
+biomass3<-cbind(biomass2[85:588,1:9],biomass2[1:504,10:16],biomass2[85:588,10:16])
+colnames(biomass3)[10:23]<-c("NatRichness1","Litter1","PhragBiomass1","TotalBiomass1","PercentPhrag1","PercentNative1","NativeBiomass1","NatRichness2","Litter2","PhragBiomass2","TotalBiomass2","PercentPhrag2","PercentNative2","NativeBiomass2")
+head(biomass3)
+
+biomass4<-biomass3%>%
+  mutate(ChangePhrag=(PercentPhrag2-PercentPhrag1)*100)
+head(biomass4)
+
+#for playing with averages within our dataset (not crms)
+biomass4a<-biomass2%>%
+  filter(is.na(Phragmites.australis.Biomass.g.)==F)%>%
+  group_by(Plot)%>%
+  summarize(sum=sum(Phragmites.australis.Biomass.g.))
+ind<-biomass4a$Plot[which(biomass4a$sum>0)]
+
+biomass4b<-biomass4%>%
+  filter(Plot%in%ind)
+biomass4c<-biomass4b%>%
+  filter(Year%in%c(2020,2021,2022,2023))
+
+
+#Figures by plot
+
+#biomass4 plots everything, biomass4b is just plots that at least had some phrag at some point in time, biomass4c is plots that had at least some phrag and only plots where water depth was measured at the plot level
+
+#Salinity
+pdf("xxxx.pdf",width=6.5,height=4.5)
+ggplot(data=biomass4b, aes(x=Salinity15cmppt,y = ChangePhrag,color=Site))+#,color=Transect
+  labs(x="Salinity (ppt)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+dev.off()
+
+#Water depth
+ggplot(data=biomass4b, aes(x=WaterDepthcm,y = ChangePhrag,color=Site))+#,color=Transect
+  labs(x="Water depth (cm)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+#pH
+ggplot(data=biomass4b, aes(x=pH,y = ChangePhrag))+#,color=Transect
+  labs(x="pH",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+#Litter mass, not sure what units litter is in, probably just g in the 20x20 square. this is kind of confusing b/c litter is generated by phrag, so the causality is tricky
+ggplot(data=biomass4b, aes(x=Litter2,y = ChangePhrag,color=Site))+#,color=Transect
+  labs(x="Litter (g)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+#Native richness
+ggplot(data=biomass4b, aes(x=NatRichness2,y = ChangePhrag))+#,color=Transect
+  labs(x="Native Richness",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_smooth(method="lm",se=F)+
+  facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+#Figures by year with standard errors
+
+#Barataria CRMS0188-H01
+#Pearl River	CRMS4110-H01
+#Turtle cove	CRMS0030-H01
+#Fontainblebleau	CRMS2854-H01
+#Big Branch	CRMS0006-H01
+#Bayou Sauvage	CRMS4107-H01
+#LUMCON1	CRMS0311-H01
+#LUMCON2	CRMS0311-H01
+
+#"growing year = Mar 1 to Oct 31" according to CRMS
+
+##### CRMS salinity #####
+sals<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/HYDROGRAPHIC_MONTHLY.csv")
+
+head(sals)
+#note that the latest measurement is sometimes in 9/23. So I should download updated data in a few months to get october 2023. note after the fact, there are V plots and P plots (station back), V is the veg plots that they survey once in jul/aug/sept, P is the soil porewater plots that they survey at least 5 times per year
+sals2<-sals%>%
+  separate(CPRA.Station.ID,c("StationFront","ID"),"-",remove=F)%>%
+  separate(ID,c("StationType",NA),1,remove=F)%>%
+  filter(StationFront%in%c("CRMS0188","CRMS4110","CRMS0006","CRMS4107"))%>%
+  filter(Measurement.Depth..ft.==.328)%>%
+  dplyr::select(Station=CPRA.Station.ID,StationFront,ID,StationType,Date=Date..mm.dd.yyyy.,Salinityppt=Soil.Porewater.Salinity..ppt.)%>%
+  separate(Date,c("Month","Day","Year"),"/",remove=F)%>%
+  filter(Year%in%c("17","18","19","20","21","22","23"),StationType=="P")%>%
+  filter(Month%in%c("3","4","5","6","7","8","9","10"))%>%  
+  mutate(StationFront=case_match(StationFront,"CRMS0006"~"Big Branch","CRMS0188"~"Barataria","CRMS4110"~"Pearl River","CRMS4107"~"Bayou Sauvage",.ptype = factor(levels = c("Barataria","Bayou Sauvage","Pearl River","Big Branch"))))%>%
+  group_by(StationFront, Year)%>%
+  summarise(AnnualSalinityppt=mean(Salinityppt, na.rm=T))%>%
+  mutate(Year=as.numeric(Year)+2000)%>%
+  rename(Site=StationFront)%>%
+  rename(CRMSsalinity=AnnualSalinityppt)
+
+head(sals2)
+data.frame(sals2)
+#sals2$Site<-c("Big Branch","Barataria","Bayou Sauvage","Pearl River")
+#sals2[order(sals2$AnnualSalinityppt),]
+
+#without the plots where phrag never was, used for below figures
+biomass4d<-biomass4b%>%
+  select(-Plot)%>%
+  group_by(Site,Year)%>%
+  summarize(across(where(is.numeric), list(mean = mean, se = std.error), na.rm = TRUE))%>%
+  left_join(sals2)
+data.frame(biomass4d)
+
+#with the plots where phrag never was, used for above figures for transitions
+biomass4f<-biomass4%>%
+  select(-Plot)%>%
+  group_by(Site,Year)%>%
+  summarize(across(where(is.numeric), list(mean = mean, se = std.error), na.rm = TRUE))%>%
+  left_join(sals2)
+data.frame(biomass4f)
+
+ggplot(data=biomass4d, aes(x=CRMSsalinity,y = ChangePhrag_mean,color=Site))+#,color=Transect
+  labs(x="Growing Season Salinity (ppt)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)),axis.text.x = element_text(angle = 35, vjust=1, hjust=1))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_errorbar(aes(ymin=ChangePhrag_mean-ChangePhrag_se,ymax=ChangePhrag_mean+ChangePhrag_se))+
+  geom_smooth(method="lm",se=F)#+
+  #facet_wrap(vars(Site),strip.position = "top")#,scales="free"
+
+
+  
+##### CRMS water depth #####\
+#go here and get all stations from individual CRMS sites: https://cims.coastal.louisiana.gov/DataDownload/DataDownload.aspx?type=hydro_hourly
+#note that the last date for some sites is in 9/23 so i will need to go back and get the october data when it is ready and redo everything
+watBP<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/BP_HYDROGRAPHIC_HOURLY.csv") #last date 10/18/23
+watBS<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/BS_HYDROGRAPHIC_HOURLY.csv") #last date 10/3/23
+watBB<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/BB_HYDROGRAPHIC_HOURLY.csv") #last datte 9/19/23
+watPR<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PR_HYDROGRAPHIC_HOURLY.csv") #last date 9/27/23
+  
+wat<-rbind(watBP,watBS,watBB,watPR)%>%
+  separate(Station.ID,c("StationFront","ID"),"-",remove=F)%>%
+  separate(ID,c("StationType",NA),1,remove=F)%>%
+  dplyr::select(Station=Station.ID,StationFront,ID,StationType,Date=Date..mm.dd.yyyy.,Time=Time..hh.mm.ss.,waterdepthmarsh=Adjusted.Water.Elevation.to.Marsh..ft.,marshelevationdatum=Adjusted.Marsh.Mat.Elevation.to.Datum..ft.,waterdepthdatum=Adjusted.Water.Elevation.to.Datum..ft.)%>%
+  separate(Date,c("Month","Day","Year"),"/",remove=F)%>%
+  filter(Year%in%c("17","18","19","20","21","22","23"))%>%
+  filter(StationType=="H")%>%
+  #filter(StationType=="M")%>%
+  #filter(Station!="CRMS0188-H01")%>%
+  filter(Month%in%c("3","4","5","6","7","8","9","10"))%>%  
+  mutate(StationFront=case_match(StationFront,"CRMS0006"~"Big Branch","CRMS0188"~"Barataria","CRMS4110"~"Pearl River","CRMS4107"~"Bayou Sauvage",.ptype = factor(levels = c("Barataria","Bayou Sauvage","Pearl River","Big Branch"))))%>%
+  group_by(StationFront, Year)%>%
+  summarize(across(where(is.numeric), list(mean = mean), na.rm = TRUE))%>%
+  mutate(Year=as.numeric(Year)+2000)%>%
+  rename(Site=StationFront)%>%
+  mutate(waterdepthmarsh_mean=waterdepthmarsh_mean/0.0328084,marshelevationdatum_mean=marshelevationdatum_mean/0.0328084,waterdepthdatum_mean=waterdepthdatum_mean/0.0328084)
+ 
+
+head(wat)
+data.frame(wat)
+
+#I think I should use the -M sites for Barataria, because it is a flotant marsh. However unfortunately there are only M sites in 2017,2018, and 2023. So I will try using the regular H data which I think does not account for it being a flotant marsh. but wait the regular H data does not calculate adjusted to marsh elevation. i'm not sure why not. i could probalby calculate it but i'd have to pull marsh elevation data from teh M plots which we don't have.
+#I should probably use water depth adjusted to marsh however still this might not be a good estimate of our exact site b/c it depends on how high the CRMS marsh sits
+unique(wat$Station.ID)
+
+
+biomass4e<-biomass4b%>%
+  select(-Plot)%>%
+  group_by(Site,Year)%>%
+  summarize(across(where(is.numeric), list(mean = mean, se = std.error), na.rm = TRUE))%>%
+  left_join(wat)
+data.frame(biomass4e)
+
+ggplot(data=biomass4e, aes(x=waterdepthdatum_mean,y = ChangePhrag_mean,color=Site))+#,color=Transect
+  labs(x="Growing Season Water depth (cm)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_errorbar(aes(ymin=ChangePhrag_mean-ChangePhrag_se,ymax=ChangePhrag_mean+ChangePhrag_se))+
+  geom_smooth(method="lm",se=F)#+
+  #facet_wrap(vars(Site),strip.position = "top",scales="free")#
+
+ggplot(data=biomass4e, aes(x=waterdepthmarsh_mean,y = ChangePhrag_mean,color=Site))+#,color=Transect
+  labs(x="Growing Season Water depth (cm)",y="Change in Phrag Relative Abundance") +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),text=element_text(size=12),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(hjust = 0, margin=margin(l=0)))+#,legend.position = "none"
+  geom_point(size=1.8)+
+  geom_errorbar(aes(ymin=ChangePhrag_mean-ChangePhrag_se,ymax=ChangePhrag_mean+ChangePhrag_se))+
+  geom_smooth(method="lm",se=F)#+
+#facet_wrap(vars(Site),strip.position = "top",scales="free")#
+
+
+
+
+
+
+
+biomass5<-biomass4%>%
+  filter(Site=="Big Branch")
+
+m1<-lme(ChangePhrag~Salinity15cmppt,random=~1|Plot,data=biomass5,na.action=na.omit)
+anova(m1,type="marginal")
+
+#All sites
+#+Yearfac + Yearfac*Site 
+m1 <- lme(
+  ChangePhrag ~ Site + Salinity15cmppt+ Site*Salinity15cmppt,
+  #correlation = corAR1(form =~ Year|Plot),
+  random = ~1|Plot, data = biomass4,na.action=na.omit)
+summary(m1)
+anova(m1,type="marginal")
+
+hist(resid(m1,type="normalized"))
+plot(biomass4$Salinity15cmppt[is.na(biomass4$Salinity15cmppt)==F&is.na(biomass4$ChangePhrag)==F],resid(m1,type="normalized"))
+
+m1 <- lme(
+  ChangePhrag ~ Salinity15cmppt,
+  random = ~Salinity15cmppt|Site, data = biomass4,na.action=na.omit)
+summary(m1)
+anova(m1,type="marginal")
+
