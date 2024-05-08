@@ -6,6 +6,21 @@
 library(riverplot)
 library(tidyverse)
 
+
+
+#Checking biomass per stem data
+
+biomassperstem<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/LAmarsh_Survey_2020_BiomassperStem.csv") #
+bpsmean<-biomassperstem%>%
+  filter(Species2!="Unknown grass #2",Species2!="Unknown plant 1",Species2!="Unknown plant 2",Species2!="Triangle stem unknown biomass")%>%
+  group_by(Species2)%>%
+  tally()
+as.data.frame(bpsmean)
+
+
+
+#River plot data
+
 #rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Phragbiomass2023.csv") #old with only bins 1-4
 #rivdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/Phragnative1.csv") #old, no 2023
 
