@@ -32,8 +32,7 @@ dat23p <- data.frame(dat23p)
 ggplot(dat23p, aes(x = Year, y = mean, color = Transect)) +
   labs(
     y = "Phragmites australis abundance (stem counts per square meter)",
-    x = "Year",
-    title = "Phragmites australis Abundance Over Time") +
+    x = "Year") +
   geom_point(size = 2.5) +
   geom_line(size = 1) +
   geom_errorbar(aes(ymax = mean + se, ymin = mean - se), width = 0.2, size = 0.8) +
@@ -43,12 +42,11 @@ ggplot(dat23p, aes(x = Year, y = mean, color = Transect)) +
     text = element_text(family = "serif"),
     axis.text = element_text(color = "black"),
     axis.title = element_text(size = 12),
-    plot.title = element_text(size = 16, face = "bold"),
     plot.subtitle = element_text(size = 12, face = "italic"),
     legend.position = "bottom",
     legend.title = element_blank(),
     strip.background = element_blank(),
-    strip.text = element_text(size = 12, face = "bold"),
+    strip.text = element_text(size = 12),
     panel.spacing = unit(1, "lines"),  # Increase spacing between panels
     axis.line = element_line(color = "gray30", size = .5)
   ) +
@@ -68,8 +66,7 @@ dat23N <- data.frame(dat23N)
 ggplot(dat23N, aes(x = Year, y = mean, color = Transect)) +
   labs(
     y = "Native Abundance (stem counts per square meter)",
-    x = "Year",
-    title = "Native Abundance Over Time") +
+    x = "Year") +
   geom_point(size = 2.5) +
   geom_line(size = 1) +
   geom_errorbar(aes(ymax = mean + se, ymin = mean - se), width = 0.2, size = 0.8) +
@@ -79,12 +76,12 @@ ggplot(dat23N, aes(x = Year, y = mean, color = Transect)) +
     text = element_text(family = "serif"),
     axis.text = element_text(color = "black"),
     axis.title = element_text(size = 12),
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 16),
     plot.subtitle = element_text(size = 12, face = "italic"),
     legend.position = "bottom",
     legend.title = element_blank(),
     strip.background = element_blank(),
-    strip.text = element_text(size = 12, face = "bold"),
+    strip.text = element_text(size = 12),
     panel.spacing = unit(1, "lines"), 
     axis.line = element_line(color = "gray30", size = .5)
   ) +
@@ -106,8 +103,7 @@ dat23R <- data.frame(dat23R)
 ggplot(dat23R, aes(x = Year, y = mean, color = Transect)) +
   labs(
     y = "Native Richenss",
-    x = "Year",
-    title = "Native Richness Over Time") +
+    x = "Year") +
   geom_point(size = 2.5) +
   geom_line(size = 1) +
   geom_errorbar(aes(ymax = mean + se, ymin = mean - se), width = 0.2, size = 0.8) +
@@ -117,12 +113,11 @@ ggplot(dat23R, aes(x = Year, y = mean, color = Transect)) +
     text = element_text(family = "serif"),
     axis.text = element_text(color = "black"),
     axis.title = element_text(size = 12),
-    plot.title = element_text(size = 16, face = "bold"),
     plot.subtitle = element_text(size = 12, face = "italic"),
     legend.position = "bottom",
     legend.title = element_blank(),
     strip.background = element_blank(),
-    strip.text = element_text(size = 12, face = "bold"),
+    strip.text = element_text(size = 12),
     panel.spacing = unit(1, "lines"), 
     axis.line = element_line(color = "gray30", size = .5)
   ) +
