@@ -1813,24 +1813,29 @@ ggplot(data=biomass4b, aes(x=NatRichness2,y = ChangePhrag))+#,color=Transect
 
 ##### CRMS salinity #####
 sals<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/HYDROGRAPHIC_MONTHLY.csv")
+sals<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/HYDROGRAPHIC_MONTHLYMay2024c.csv")
 
 head(sals)
-#note that the latest measurement is sometimes in 9/23. So I should download updated data in a few months to get october 2023. note after the fact, there are V plots and P plots (station back), V is the veg plots that they survey once in jul/aug/sept, P is the soil porewater plots that they survey at least 5 times per year
+#note that the latest measurement is sometimes in 9/23. So I should download updated data in a few months to get october 2023. note after the fact, there are V plots and P plots (station back), V is the veg plots that they survey once in jul/aug/sept, P is the soil porewater plots that they survey at least 5 times per year. I will just use the P plots so numbers aren't biased toward the summer
 sals2<-sals%>%
   separate(CPRA.Station.ID,c("StationFront","ID"),"-",remove=F)%>%
   separate(ID,c("StationType",NA),1,remove=F)%>%
   filter(StationFront%in%c("CRMS0188","CRMS4110","CRMS0006","CRMS4107"))%>%
   filter(Measurement.Depth..ft.==.328)%>%
+  filter(StationType=="P")%>%
   dplyr::select(Station=CPRA.Station.ID,StationFront,ID,StationType,Date=Date..mm.dd.yyyy.,Salinityppt=Soil.Porewater.Salinity..ppt.)%>%
   separate(Date,c("Month","Day","Year"),"/",remove=F)%>%
   filter(Year%in%c("17","18","19","20","21","22","23"),StationType=="P")%>%
   filter(Month%in%c("3","4","5","6","7","8","9","10"))%>%  
   mutate(StationFront=case_match(StationFront,"CRMS0006"~"Big Branch","CRMS0188"~"Barataria","CRMS4110"~"Pearl River","CRMS4107"~"Bayou Sauvage",.ptype = factor(levels = c("Barataria","Bayou Sauvage","Pearl River","Big Branch"))))%>%
-  group_by(StationFront, Year)%>%
+  group_by(StationFront, Year)%>% 
   summarise(AnnualSalinityppt=mean(Salinityppt, na.rm=T))%>%
   mutate(Year=as.numeric(Year)+2000)%>%
   rename(Site=StationFront)%>%
-  rename(CRMSsalinity=AnnualSalinityppt)
+  rename(CRMSsalinity=AnnualSalinityppt)%>%
+  group_by(Site)%>%
+  summarise(CRMSgrowingseasonsalinity=mean(CRMSsalinity, na.rm=T))
+  
 
 head(sals2)
 data.frame(sals2)
