@@ -2,7 +2,6 @@
 
 library(tidyverse)
 library(nlme)
-library(lemon)
 
 dat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Stats/Temporal/PhragSurvey2017to2023.csv",stringsAsFactors = T,row.names=1)
 
