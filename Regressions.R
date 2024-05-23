@@ -84,6 +84,10 @@ BPreg<-dat2%>%
 m1<-lme(NatAbunlog ~ Phragmites.australislog + Yearfac,
         correlation = corAR1(form =~ Year|Plot),
         random=~1|Plot, data=BPreg, na.action=na.omit)
+#if I take out fixed effect of year, than phrag is significant
+# m1<-lme(NatAbunlog ~ Phragmites.australislog ,
+#         correlation = corAR1(form =~ Year|Plot),
+#         random=~1|Plot, data=BPreg, na.action=na.omit)
 #summary(m1)
 anova(m1,type="marginal")
 
@@ -92,6 +96,9 @@ PRreg<-dat2%>%
 m1<-lme(NatAbunlog ~ Phragmites.australislog + Yearfac,
         correlation = corAR1(form =~ Year|Plot),
         random=~1|Plot, data=PRreg, na.action=na.omit)
+# m1<-lme(NatAbunlog ~ Phragmites.australislog,
+#         correlation = corAR1(form =~ Year|Plot),
+#         random=~1|Plot, data=PRreg, na.action=na.omit)
 #summary(m1)
 anova(m1,type="marginal")
 
