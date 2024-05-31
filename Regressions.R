@@ -66,6 +66,7 @@ head(dat2)
 dat2$NatAbunlog<-log10(dat2$NatAbun+1)
 dat2$Phragmites.australislog<-log10(dat2$Phragmites.australis+1)
 
+#Including the Yearfac and Yearfac*Site fixed effect this is a conservative analysis b/c it assumes that changes over time are basically due to year rather than Phrag. But I think being conservative is important b/c salnity changes over the years (salinity increases, phrag increases, natives decrease) and you don't want to interpret that as a competitive effect. So I will leave Yearfac and Yearfac*Site in.
 m1 <- lme(
   NatAbunlog ~ Site + Phragmites.australislog + Site*Phragmites.australislog+Yearfac + Yearfac*Site ,
   correlation = corAR1(form =~ Year|Plot),
