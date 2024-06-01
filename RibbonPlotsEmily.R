@@ -523,7 +523,7 @@ trPR<-PRbin6c%>%
 data.frame(trPR)
 trPR$Site<-"Pearl River"
 
-#when i first did this, i forgot that i deleted all data from plots 109, 112, and 113 b/c I was missing one year in each of those plots and it was necessary for the ribbon plot. [plot 112 and 113 missing in 2018, plot 109 had nothing in it in 2023, so im missing 5 transitions total] but I can put it back I think for these analyses. I put them back in but then realized I do still need to delete the ones with NAs 2018-2019,2023, so I filtered on that below
+#when i first did this, i forgot that i deleted all data from plots 109, 112, and 113 b/c I was missing one year in each of those plots and it was necessary for the ribbon plot. [plot 112 and 113 missing in 2018, plot 109 had nothing in it in 2023, so im missing 5 transitions total] but I can put it back for these analyses. I put them back in but then realized I do still need to delete the ones with NAs 2018-2019,2023, so I filtered on that below
 tr<-rbind(trBP,trBS,trBB,trPR)
 tr2<-tr%>%
   mutate(Year=as.numeric(recode(years,"y1_y2"="2018","y2_y3"="2019","y3_y4"="2020","y4_y5"="2021","y5_y6"="2022","y6_y7"="2023")))%>%
@@ -533,17 +533,22 @@ tr2<-tr%>%
   mutate(NtoTPandTtoP=ifelse(NtoTP==1|TP==1,1,0))%>%
   mutate(PtoNT=ifelse(State1=="P"&State2%in%c("N","T"),1,0))%>%
   mutate(PtoNTandTtoN=ifelse(PtoNT==1|TN==1,1,0))%>%
-  mutate(stasis=case_match(change,"N_N"~1,"T_T"~1,"P_P"~1,"N_T"~0,"N_P"~0,"T_N"~0,"T_P"~0,"P_N"~0,"P_T"~0))
+  mutate(stasis=case_match(change,"N_N"~1,"T_T"~1,"P_P"~1,"N_T"~0,"N_P"~0,"T_N"~0,"T_P"~0,"P_N"~0,"P_T"~0))%>%
+  mutate(Sitelab=case_match(Site,"Barataria"~"a) Barataria","Pearl River"~"b) Pearl River","Bayou Sauvage"~"c) Bayou Sauvage","Big Branch"~"d) Big Branch",.ptype = factor(levels = c("a) Barataria","b) Pearl River","c) Bayou Sauvage","d) Big Branch"))))
+
+tr2$Site<-factor(tr2$Site,levels=c("Barataria","Pearl River","Bayou Sauvage","Big Branch"))
+
 #ind<-which(is.na(tr2$NN)==T)
 #View(tr2[ind,])
 
 data.frame(tr2) #504 x 42, now 499 x 42
+dim(tr2)
 tail(data.frame(tr2))
 
 
-##### Figures of transitions vs salinity and water depth #####
+##### Figures of transitions vs plot level salinity and water depth #####
 
-#possible transitions to test. Like Stein et al 2016, we will subset data for plots that did not transition and plots that transitoned into one of the other categories:
+#possible transitions to test. Like Stein et al 2016, we will subset data for plots that did not transition and plots that transitioned into one of the other categories:
 #NN-NT
 #NN-NP
 #TT-TP
@@ -551,123 +556,110 @@ tail(data.frame(tr2))
 #PP-PN
 #PP-PT
 
+#Making some quick datasets and plots of single transitions
 #N going to T
 NN_NT<-tr2%>%
   filter(change%in%c("N_N","N_T"))
 data.frame(NN_NT)
-
 ggplot(data = NN_NT, aes(x = Salinity15cmppt, y = NT)) +
   geom_point()+
   geom_smooth(method='glm',method.args=list(family='binomial'))+
   facet_wrap(~Site)
 
-
 #N going to P
 NN_NP<-tr2%>%
   filter(change%in%c("N_N","N_P"))
 data.frame(NN_NP)
-
 ggplot(data = NN_NP, aes(x = Salinity15cmppt, y = NP)) +
   geom_point()+
   geom_smooth(method='glm',method.args=list(family='binomial'))+
   facet_wrap(~Site)
 
-
 #N going to either T or P
 NN_NT_NP<-tr2%>%
   filter(change%in%c("N_N","N_T","N_P"))
 data.frame(NN_NT_NP)
-
 ggplot(data = NN_NT_NP, aes(x = Salinity15cmppt, y = NtoTP)) +
   geom_point()+
   geom_smooth(method='glm',method.args=list(family='binomial'))+
   facet_wrap(~Site)
 
 
-#N going to either T or P and T going to P
+#Making combined dataset of N going to either T or P and T going to P
 NN_NT_NP_TT_TP<-tr2%>%
   filter(change%in%c("N_N","N_T","N_P","T_T","T_P"))
 data.frame(NN_NT_NP_TT_TP)
 
-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTP)) +
-  geom_point(aes(color=Site))+
-  geom_smooth(method='glm',method.args=list(family='binomial'))+
-  facet_wrap(~Site)
 
-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTP,color=Site)) +
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)
-
-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = TP,color=Site)) +
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)
+#Making combined dataset of P going to N or T and T going to N
+PP_PN_PT_TT_TN<-tr2%>%
+  filter(change%in%c("P_P","P_N","P_T","T_T","T_N"))
+data.frame(PP_PN_PT_TT_TN)
 
 
-#Probability of going to more phrag
-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP)) +
-  geom_point(aes(color=Site))+
-  geom_smooth(method='glm',method.args=list(family='binomial'))+
-  facet_wrap(~Site)
 
-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP,color=Site,linetype=Site)) +
-  ylab("Probability of a transition toward more Phragmites") +
+##### Salinity and Probability of going to more phrag #####
+
+#pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Manuscripts/Temporal/Figs/test.pdf",width=2.4,height=2)
+salphrag<-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP,color=Site,linetype=Site)) +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
+  ylab("Probability of transition toward more Phragmites") +
   xlab("Salinity (ppt)")+
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
-  scale_linetype_manual(values = c("dashed", "solid", "dashed", "solid"))
+  geom_point(size=.8)+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=.5)+
+  scale_linetype_manual(values = c("dashed", "solid", "solid", "dashed"))
+#dev.off()
 
-#m1<-lme(NtoTPandTtoP~Site*Salinity15cmppt,random=~Site|Year,data = NN_NT_NP_TT_TP,na.action = na.omit,control =list(msMaxIter = 1000, msMaxEval = 1000)) #but this is normal, won't converge with Site|Year, which probably makes sense b/c site is a factor
-#summary(m1)
-#m1<-gls(NtoTPandTtoP~Site*Salinity15cmppt+Site*Year,data = NN_NT_NP_TT_TP,na.action = na.omit) #but this is normal
+#Year is linear, years is a factor. For Bayou Sauvage we only have data from some plots in 2019 and from all plots in 2021 and 2023 (I think we have it for 2017 too but that is not included in the transition dataset)
+#m1<-lme(NtoTPandTtoP~Site*Salinity15cmppt,random=~1|years,data = NN_NT_NP_TT_TP,na.action = na.omit,control =list(msMaxIter = 1000, msMaxEval = 1000)) #but this is normal
+#m1<-gls(NtoTPandTtoP~Site*Salinity15cmppt+years*Site,data = NN_NT_NP_TT_TP,na.action = na.omit) #but this is normal, this doesn't converge b/c don't have salinity from some years from some sites (Bayou Sauvage)
 #anova(m1,type="marginal")
 
-#b1 <- glm(NtoTPandTtoP ~ Site*Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP, na.action=na.exclude)#Site+Salinity15cmppt+Year+Site*Salinity15cmppt+Site*Year
+#Full model with all sites
+b1 <- glm(NtoTPandTtoP ~ Site*Salinity15cmppt, family = binomial(link="logit"), data = NN_NT_NP_TT_TP, na.action=na.exclude)
 #summary(b1)
-#drop1(b1,test="Chisq",.~.)
+drop1(b1,test="Chisq",.~.)
 
+#I could do this in glmer if I wanted to include a random effect of year, but I don't think I want to because the variation in salinity is over the years so we don't want year per se in the model
+# library(lme4)
+# b1<-glmer(NtoTPandTtoP ~ Site*Salinity15cmppt+(1|years),family=binomial(link="cloglog"),data = NN_NT_NP_TT_TP,na.action=na.exclude)#convergence issues, singular, not sure why
+# drop1(b1,test="Chisq",.~.)
+
+#Models by site
 NN_NT_NP_TT_TP_BP<-NN_NT_NP_TT_TP%>%filter(Site=="Barataria")
 NN_NT_NP_TT_TP_BS<-NN_NT_NP_TT_TP%>%filter(Site=="Bayou Sauvage")
 NN_NT_NP_TT_TP_BB<-NN_NT_NP_TT_TP%>%filter(Site=="Big Branch")
 NN_NT_NP_TT_TP_PR<-NN_NT_NP_TT_TP%>%filter(Site=="Pearl River")
 
-b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#
+#note when using cloglog (which you are supposed to do when the change of an event is "extremely" low or high) yields pretty much the same p value as the logit. my most extreme case is 7 out of 98, which maybe is not even really that extreme. so i am going to stick with logit
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#18 1's out of 82
 #summary(b1)
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#27 1's out of 81
 #summary(b1)
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#
-summary(b1)
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#11 1's out of 98
+#summary(b1)
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#
-summary(b1)
-drop1(b1,test="Chisq",.~.)
-
-
-library(lme4)
-b1<-glmer(NtoTPandTtoP ~ Site*Salinity15cmppt+(1|Year),family=binomial(link="cloglog"),data = NN_NT_NP_TT_TP,na.action=na.exclude)#convergence issues, singular
+b1 <- glm(NtoTPandTtoP ~ Salinity15cmppt, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#7 1's out of 98
+#summary(b1)
 drop1(b1,test="Chisq",.~.)
 
 
 
-#P going to N or T and T going to N
-PP_PN_PT_TT_TN<-tr2%>%
-  filter(change%in%c("P_P","P_N","P_T","T_T","T_N"))
-data.frame(PP_PN_PT_TT_TN)
+##### Salinity and probability of going to more native #####
 
-ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN)) +
-  geom_point(aes(color=Site))+
-  geom_smooth(method='glm',method.args=list(family='binomial'))+
-  facet_wrap(~Site)
-
-ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN,color=Site,linetype=Site)) +
-  ylab("Probability of a transition toward more native") +
+salnat<-ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN,color=Site,linetype=Site)) +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
+  ylab("Probability of transition toward more native") +
   xlab("Salinity (ppt)")+
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
-  scale_linetype_manual(values = c("dashed", "solid", "solid", "dashed"))
+  geom_point(size=.8)+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=.5)+
+  scale_linetype_manual(values = c("dashed", "dashed", "solid", "solid"))
 
-b1 <- glm(PtoNTandTtoN ~ Site*Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
+b1 <- glm(PtoNTandTtoN ~ Site*Salinity15cmppt, family = binomial(link="logit"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
 drop1(b1,test="Chisq",.~.)
 
 PP_PN_PT_TT_TN_BP<-PP_PN_PT_TT_TN%>%filter(Site=="Barataria")
@@ -675,36 +667,136 @@ PP_PN_PT_TT_TN_BS<-PP_PN_PT_TT_TN%>%filter(Site=="Bayou Sauvage")
 PP_PN_PT_TT_TN_BB<-PP_PN_PT_TT_TN%>%filter(Site=="Big Branch")
 PP_PN_PT_TT_TN_PR<-PP_PN_PT_TT_TN%>%filter(Site=="Pearl River")
 
-b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#
-#summary(b1)
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#23 1s out of 62
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BP$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BP$PtoNTandTtoN)
 
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#16 1s out of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BS$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BS$PtoNTandTtoN)
 
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#18 1s out of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BB$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BB$PtoNTandTtoN)
+
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#22 1s out of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_PR$PtoNTandTtoN);length(PP_PN_PT_TT_TN_PR$PtoNTandTtoN)
 
 
 
 #Water depth
 
-#Toward more phrag
-ggplot(data = NN_NT_NP_TT_TP, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
-  ylab("Probability of a transition toward more Phragmites") +
-  xlab("Water depth (cm)")+
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
-  scale_linetype_manual(values = c("dashed", "solid", "dashed", "dashed"))
+#Looking at variation in water depth by years to see if I should delete years 2017-2019. Overall, there is about a 10-13 cm range in plots at a site in any given year. so it is a little sketchy to attribute a site mean (of say 10) to all the plots, when in reality it would range from 4-16cm. But at some sites like big branch there were the water depths in 2017-19 way higher than the ranges in other years (in which case it would be fine to desingate all plots as 50 when the other years range under 25). Actually because most of the water depth variation is between years rather than within years, it migth be important to ues all the data we can. The full models are more significant with using all data, but the site level regressions are basically the same using 2017-19 vs not. It is also good to use all data b/c otherwise some of the site level regressions only have like 1 transition
+temp<-tr2%>%
+  filter(Site=="Big Branch")
+ggplot(temp,aes(x=WaterDepthcm)) +
+  geom_histogram() +
+  facet_wrap(~Year)
 
-#2020-2023 only
+
+##### Water depth - Using all years, going more phrag #####
+
+#Figs/Stats for all years
+watphrag<-ggplot(data = NN_NT_NP_TT_TP, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
+  ylab("Probability of transition toward more Phragmites") +
+  xlab("Water depth (cm)")+
+  geom_point(size=0.8)+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F, size=.5)+
+  scale_linetype_manual(values = c("dashed", "dashed", "solid", "dashed"))
+
+b1 <- glm(NtoTPandTtoP ~ Site*WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+#Stats for all years
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#14 1s out of 82
+drop1(b1,test="Chisq",.~.)
+sum(NN_NT_NP_TT_TP_BP$NtoTPandTtoP);length(NN_NT_NP_TT_TP_BP$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#27 1s to 81
+drop1(b1,test="Chisq",.~.)
+sum(NN_NT_NP_TT_TP_BS$NtoTPandTtoP);length(NN_NT_NP_TT_TP_BS$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#11 1s out of 98
+drop1(b1,test="Chisq",.~.)
+sum(NN_NT_NP_TT_TP_BB$NtoTPandTtoP);length(NN_NT_NP_TT_TP_BB$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#7 1s out of 98
+drop1(b1,test="Chisq",.~.)
+sum(NN_NT_NP_TT_TP_PR$NtoTPandTtoP);length(NN_NT_NP_TT_TP_PR$NtoTPandTtoP)
+
+
+##### Water depth - Using all years, going more native #####
+
+watnat<-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site,linetype=Site)) +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
+  ylab("Probability of a transition toward more native") +
+  xlab("Water depth (cm)")+
+  geom_point(size=0.8)+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=0.5)+
+  scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
+
+b1 <- glm(PtoNTandTtoN ~ Site*WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+#Stats on all years
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#23 1s of 62
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BP$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BP$PtoNTandTtoN)
+
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)# 16 1s of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BS$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BS$PtoNTandTtoN)
+
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#18 1s of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_BB$PtoNTandTtoN);length(PP_PN_PT_TT_TN_BB$PtoNTandTtoN)
+
+b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#22 of 50
+drop1(b1,test="Chisq",.~.)
+sum(PP_PN_PT_TT_TN_PR$PtoNTandTtoN);length(PP_PN_PT_TT_TN_PR$PtoNTandTtoN)
+
+
+##### Four panel transition plot #####
+
+salwatlegend<-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site)) +
+  theme_classic()+
+  theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line())+
+  geom_point(size=0.8)+
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=0.5)
+
+pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Manuscripts/Temporal/Figs/FourPanelTransitionPlot.pdf",width=12.4,height=3)#4.8
+legend <- cowplot::get_legend(salwatlegend)
+plot_grid(salphrag,salnat,get_legend(salphrag),watphrag,watnat,legend,nrow = 2,ncol=3,labels=c("a) Toward Phragmites dominance","b) Toward native dominance","","c) Toward Phragmites dominance","d) Toward native dominance"),label_size=10,hjust=-.17,vjust=1.2,scale=.9,label_fontface = "plain")
+dev.off()
+
+
+#Trying a few sites (not bayou sauvage) with both water depth and salinity, things are similar except not sig at bayou sauvage
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt + WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt + WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt + WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+b1 <- glm(PtoNTandTtoN ~ Salinity15cmppt + WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#
+drop1(b1,test="Chisq",.~.)
+
+
+
+
+
+
+##### Using 2020-2023 only, since we don't have good plot level water depth 2017-2019 #####
 NN_NT_NP_TT_TP2<-NN_NT_NP_TT_TP%>%
   filter(Year>2019)
+
+#Toward more phrag
 
 ggplot(data = NN_NT_NP_TT_TP2, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
   ylab("Probability of a transition toward more Phragmites") +
@@ -713,46 +805,40 @@ ggplot(data = NN_NT_NP_TT_TP2, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
   scale_linetype_manual(values = c("dashed", "solid", "dashed", "dashed"))
 
-#I don't trust the BS data b/c only four plots had waterdepth>0
+b1 <- glm(NtoTPandTtoP ~ Site*WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP2, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+
+#I don't trust the BS data b/c only 4 of 55 plots had waterdepth>0
 data.frame(NN_NT_NP_TT_TP2_BS%>%filter(WaterDepthcm>0))
-data.frame(NN_NT_NP_TT_TP_BP%>%filter(WaterDepthcm>15))
+length(NN_NT_NP_TT_TP2_BS$WaterDepthcm)
 
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BS, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_BB, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP_PR, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-
+#Stats for 2020-2023
 NN_NT_NP_TT_TP2_BP<-NN_NT_NP_TT_TP2%>%filter(Site=="Barataria")
 NN_NT_NP_TT_TP2_BS<-NN_NT_NP_TT_TP2%>%filter(Site=="Bayou Sauvage")
 NN_NT_NP_TT_TP2_BB<-NN_NT_NP_TT_TP2%>%filter(Site=="Big Branch")
 NN_NT_NP_TT_TP2_PR<-NN_NT_NP_TT_TP2%>%filter(Site=="Pearl River")
 
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BP, na.action=na.exclude)#
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BP, na.action=na.exclude)# 8 1s of 54
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BS, na.action=na.exclude)#
+sum(NN_NT_NP_TT_TP2_BP$NtoTPandTtoP);length(NN_NT_NP_TT_TP2_BP$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BS, na.action=na.exclude)#22 1s of 55
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BB, na.action=na.exclude)#
+sum(NN_NT_NP_TT_TP2_BS$NtoTPandTtoP);length(NN_NT_NP_TT_TP2_BS$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_BB, na.action=na.exclude)# 9 1s of 71
 drop1(b1,test="Chisq",.~.)
-b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_PR, na.action=na.exclude)#
+sum(NN_NT_NP_TT_TP2_BB$NtoTPandTtoP);length(NN_NT_NP_TT_TP2_BB$NtoTPandTtoP)
+
+b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="cloglog"), data = NN_NT_NP_TT_TP2_PR, na.action=na.exclude)# 1 1s of 70
 drop1(b1,test="Chisq",.~.)
+sum(NN_NT_NP_TT_TP2_PR$NtoTPandTtoP);length(NN_NT_NP_TT_TP2_PR$NtoTPandTtoP)
+
 
 
 
 #Towards less phrag
-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site,linetype=Site)) +
-  ylab("Probability of a transition toward more native") +
-  xlab("Water depth (cm)")+
-  geom_point()+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
-  scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
 
 #2020-2023 only
 PP_PN_PT_TT_TN2<-PP_PN_PT_TT_TN%>%
@@ -765,23 +851,15 @@ ggplot(data = PP_PN_PT_TT_TN2, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F)+
   scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
 
+b1 <- glm(PtoNTandTtoN ~ Site*WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN2, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+
 #I don't trust the BS data b/c only 1 plots had waterdepth>0
 data.frame(PP_PN_PT_TT_TN2_BS%>%filter(WaterDepthcm>0))
 data.frame(PP_PN_PT_TT_TN_BP%>%filter(WaterDepthcm>15))
 
-b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BS, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_BB, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN_PR, na.action=na.exclude)#
-#summary(b1)
-drop1(b1,test="Chisq",.~.)
-
+#Stats on 2020-2023
 PP_PN_PT_TT_TN2_BP<-PP_PN_PT_TT_TN2%>%filter(Site=="Barataria")
 PP_PN_PT_TT_TN2_BS<-PP_PN_PT_TT_TN2%>%filter(Site=="Bayou Sauvage")
 PP_PN_PT_TT_TN2_BB<-PP_PN_PT_TT_TN2%>%filter(Site=="Big Branch")
@@ -795,6 +873,9 @@ b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data =
 drop1(b1,test="Chisq",.~.)
 b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="cloglog"), data = PP_PN_PT_TT_TN2_PR, na.action=na.exclude)#
 drop1(b1,test="Chisq",.~.)
+
+
+
 
 
 
@@ -815,9 +896,16 @@ tbl<-table(tr2BP$State1,tr2BP$State2);tbl
 table(tr2BP$State1,tr2BP$NtoTPandTtoP)
 chisq.test(tbl)
 
+#Note about contingency tables: using a chi sq test assumes that you have a lot of data. the chi 2 test in general relies on an approximation. if you have n<5, you could use a continuity correction which is an approximation to the fisher's exact test. But really you should use a fishers exact test in the first place. fisher's exact test is computationally intensive but any computer can now do it.
+#https://stats.stackexchange.com/questions/362517/when-to-switch-off-the-continuity-correction-in-chisq-test-function
+#however on further exploration, the fisher exact tests also makes some assumptions, for example that that row and column totals are fixed. also you can't do it on a 2 x 1 table.
+#https://www.graphpad.com/guides/prism/latest/statistics/stat_chi-square_or_fishers_test.htm
+#so for now I will keep it as is.
+#alternatively I could use "simulate.p.value" but I think that this makes the same assumptions of the fisher exact test (in terms of row and column marginals)
+#alternatively I could use a g.test but despite what Claudia's paper says, it sill suffers when samples size <5
 
 ###### Persistence of Phrag within a site ######
-#          Statis   to other
+#          Stasis   to other
 # one site
 #
 
@@ -828,6 +916,8 @@ tr2BP<-tr2%>%
 
 tbl<-table(tr2BP$Site,tr2BP$PtoNT);tbl
 chisq.test(tbl, correct = FALSE)
+chisq.test(tbl,correct=F,simulate.p.value = T)
+g.test(tbl) #library(AMR)
 
 ##BS is persistent***
 tr2BS<-tr2%>%
@@ -837,6 +927,7 @@ tr2BS<-tr2%>%
 
 tbl<-table(tr2BS$Site,tr2BS$PtoNT);tbl
 chisq.test(tbl, correct = FALSE)
+assocstats(tbl)
 
 tr2BB<-tr2%>%
   filter(Site=="Big Branch")%>%
@@ -925,12 +1016,13 @@ tr2PR<-tr2%>%
 #data.frame(tr2PR)
 
 tbl<-table(tr2PR$Site,tr2PR$NtoTP);tbl
-chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = T) #note the correction does not work for 1 x 2 tables
+chisq.test(tbl, correct = F)
+g.test(tbl)
 
 
 
-
-###### Pairwise looking at persistence of phrag ######
+###### Pairwise testing persistence of phrag ######
 
 #           stasis    to other 
 # BP Phrag
@@ -999,7 +1091,7 @@ tbl<-table(tr2BBPR$Site,tr2BBPR$PtoNT);tbl
 chisq.test(tbl, correct = FALSE)
 
 
-###### Pairwise looking at persistence of transition ######
+###### Pairwise testing persistence of transition ######
 
 #           stasis    to other 
 # BP Trans
@@ -1062,7 +1154,7 @@ tbl<-table(tr2BBPR$Site,tr2BBPR$TT);tbl
 chisq.test(tbl, correct = FALSE)
 
 
-###### Pairwise looking at persistence of native ######
+###### Pairwise testing persistence of native ######
 
 #           stasis    to other 
 # BP native
@@ -1086,6 +1178,7 @@ tr2BPBB<-tr2%>%
 
 tbl<-table(tr2BPBB$Site,tr2BPBB$NtoTP);tbl
 chisq.test(tbl, correct = FALSE)
+fisher.test(tbl)
 
 #BP PR
 tr2BPPR<-tr2%>%
@@ -1095,6 +1188,7 @@ tr2BPPR<-tr2%>%
 
 tbl<-table(tr2BPPR$Site,tr2BPPR$NtoTP);tbl
 chisq.test(tbl, correct = T)
+fisher.test(tbl)
 
 #BS BB
 tr2BSBB<-tr2%>%
@@ -1125,13 +1219,15 @@ chisq.test(tbl, correct = T)
 
 
 
-###### Pairwise looking directionality ######
+###### Pairwise testing directionality ######
 
 #           to pair    stasis    
 # BP phrag
 # BP trans
 
 #Use the correct = TRUE option, if expected counts in any cell in the contingency table are less than 5
+#overall, using the simulation or fisher exact test gives qualitatively similar results. the only thing that changes occasionally is that the simulation and fisher tests are nearly significant when the correct=T restuls are like p=0.15
+
 #BP, T&P
 tr2BP_TP<-tr2%>%
   filter(Site=="Barataria")%>%
@@ -1148,6 +1244,8 @@ tr2BP_NP<-tr2%>%
 
 tbl<-table(tr2BP_NP$State1,tr2BP_NP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #BP, N&T
 #sig, directionally from T to N
@@ -1157,6 +1255,8 @@ tr2BP_NT<-tr2%>%
 
 tbl<-table(tr2BP_NT$State1,tr2BP_NT$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 
 #BS, T&P
@@ -1175,6 +1275,8 @@ tr2BS_NP<-tr2%>%
 
 tbl<-table(tr2BS_NP$State1,tr2BS_NP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #BS, N&T
 tr2BS_NT<-tr2%>%
@@ -1193,6 +1295,8 @@ tr2BB_TP<-tr2%>%
 
 tbl<-table(tr2BB_TP$State1,tr2BB_TP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #BB, N&P
 #significant, directionally from P to N
@@ -1202,6 +1306,8 @@ tr2BB_NP<-tr2%>%
 
 tbl<-table(tr2BB_NP$State1,tr2BB_NP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #BB, N&T
 #sig, directionally from T to N
@@ -1221,6 +1327,8 @@ tr2PR_TP<-tr2%>%
 
 tbl<-table(tr2PR_TP$State1,tr2PR_TP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #PR, N&P
 tr2PR_NP<-tr2%>%
@@ -1229,6 +1337,8 @@ tr2PR_NP<-tr2%>%
 
 tbl<-table(tr2PR_NP$State1,tr2PR_NP$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 #PR, N&T
 #sigificant, directionally from T to N
@@ -1238,6 +1348,8 @@ tr2PR_NT<-tr2%>%
 
 tbl<-table(tr2PR_NT$State1,tr2PR_NT$stasis);tbl
 chisq.test(tbl, correct = T)
+chisq.test(tbl, correct = F, simulate.p.value = T)
+fisher.test(tbl)
 
 
 
