@@ -16,7 +16,7 @@ dat_23<-dat23%>%
   mutate(Yearfac=as.factor(Year))
 dat_23$Transect<-factor(dat_23$Transect,levels=c("Native","Transition","Phragmites"))
 dat_23$Plot<-factor(dat_23$Plot)
-dat_23$Site<-factor(dat_23$Site,levels=c("Barataria","Bayou Sauvage","Big Branch","Pearl River"))
+dat_23$Site<-factor(dat_23$Site,levels=c("Barataria", "Pearl River", "Bayou Sauvage", "Big Branch"))
 
 ##PHRAG ABUNDANCE (stem counts)
 #Summary statistics
@@ -50,7 +50,9 @@ ggplot(dat23p, aes(x = Year, y = mean, color = Transect)) +
     panel.spacing = unit(1, "lines"),  # Increase spacing between panels
     axis.line = element_line(color = "gray30", size = .5)
   ) +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1") +
+  scale_color_manual(values = c("Native" = "#56ae6c", "Transition" = "#6881d8", "Phragmites" = "#ba543d"))
+
 
 ##Native abundance (stem counts)
 #Summary statistics
@@ -85,7 +87,8 @@ ggplot(dat23N, aes(x = Year, y = mean, color = Transect)) +
     panel.spacing = unit(1, "lines"), 
     axis.line = element_line(color = "gray30", size = .5)
   ) +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1") +
+  scale_color_manual(values = c("Native" = "#56ae6c", "Transition" = "#6881d8", "Phragmites" = "#ba543d"))
 
 
 
@@ -121,7 +124,9 @@ ggplot(dat23R, aes(x = Year, y = mean, color = Transect)) +
     panel.spacing = unit(1, "lines"), 
     axis.line = element_line(color = "gray30", size = .5)
   ) +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1") +
+  scale_color_manual(values = c("Native" = "#56ae6c", "Transition" = "#6881d8", "Phragmites" = "#ba543d"))
+
 
 
 
