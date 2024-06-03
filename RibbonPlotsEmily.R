@@ -751,7 +751,7 @@ watnat<-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,col
 
 b1 <- glm(PtoNTandTtoN ~ Site*WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
 drop1(b1,test="Chisq",.~.)
-
+#test
 #without BS
 PP_PN_PT_TT_TNnoBS<-PP_PN_PT_TT_TN%>%
   filter(Site!="Bayou Sauvage")
