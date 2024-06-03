@@ -604,7 +604,8 @@ data.frame(PP_PN_PT_TT_TN)
 salphrag<-ggplot(data = NN_NT_NP_TT_TP, aes(x = Salinity15cmppt, y = NtoTPandTtoP,color=Site,linetype=Site)) +
   theme_classic()+
   theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
-  ylab("Probability of transition toward more Phragmites") +
+  theme(plot.margin = unit(c(17,5,5,5), "pt"))+#
+  ylab("Probability of transition") +# toward more Phragmites
   xlab("Salinity (ppt)")+
   geom_point(size=.8)+
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=.5)+
@@ -653,7 +654,9 @@ drop1(b1,test="Chisq",.~.)
 salnat<-ggplot(data = PP_PN_PT_TT_TN, aes(x = Salinity15cmppt, y = PtoNTandTtoN,color=Site,linetype=Site)) +
   theme_classic()+
   theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
-  ylab("Probability of transition toward more native") +
+  theme(plot.margin = unit(c(17,5,5,5), "pt"))+#
+  ylab("") +# toward more native
+  #ylab("Probability of transition") +# toward more native
   xlab("Salinity (ppt)")+
   geom_point(size=.8)+
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=.5)+
@@ -701,7 +704,8 @@ ggplot(temp,aes(x=WaterDepthcm)) +
 watphrag<-ggplot(data = NN_NT_NP_TT_TP, aes(x = WaterDepthcm, y = NtoTPandTtoP,color=Site,linetype=Site)) +
   theme_classic()+
   theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
-  ylab("Probability of transition toward more Phragmites") +
+  theme(plot.margin = unit(c(17,5,5,5), "pt"))+#
+  ylab("Probability of transition") +# toward more Phragmites
   xlab("Water depth (cm)")+
   geom_point(size=0.8)+
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F, size=.5)+
@@ -709,6 +713,10 @@ watphrag<-ggplot(data = NN_NT_NP_TT_TP, aes(x = WaterDepthcm, y = NtoTPandTtoP,c
 
 b1 <- glm(NtoTPandTtoP ~ Site*WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP, na.action=na.exclude)
 drop1(b1,test="Chisq",.~.)
+
+#I don't trust the BS data b/c only 4 of 81 plots had waterdepth>0
+data.frame(NN_NT_NP_TT_TP_BS%>%filter(WaterDepthcm>0))
+length(NN_NT_NP_TT_TP_BS$WaterDepthcm)
 
 #Stats for all years
 b1 <- glm(NtoTPandTtoP ~ WaterDepthcm, family = binomial(link="logit"), data = NN_NT_NP_TT_TP_BP, na.action=na.exclude)#14 1s out of 82
@@ -733,14 +741,27 @@ sum(NN_NT_NP_TT_TP_PR$NtoTPandTtoP);length(NN_NT_NP_TT_TP_PR$NtoTPandTtoP)
 watnat<-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site,linetype=Site)) +
   theme_classic()+
   theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line(),legend.position="none")+
-  ylab("Probability of a transition toward more native") +
+  theme(plot.margin = unit(c(17,5,5,5), "pt"))+#
+  ylab("") +# toward more native
+  #ylab("Probability of a transition") +# toward more native
   xlab("Water depth (cm)")+
   geom_point(size=0.8)+
   geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=0.5)+
-  scale_linetype_manual(values = c("solid", "dashed", "dashed", "dashed"))
+  scale_linetype_manual(values = c("solid", "dashed", "blank", "dashed"))
 
 b1 <- glm(PtoNTandTtoN ~ Site*WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN, na.action=na.exclude)
 drop1(b1,test="Chisq",.~.)
+
+#without BS
+PP_PN_PT_TT_TNnoBS<-PP_PN_PT_TT_TN%>%
+  filter(Site!="Bayou Sauvage")
+
+b1 <- glm(PtoNTandTtoN ~ Site*WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TNnoBS, na.action=na.exclude)
+drop1(b1,test="Chisq",.~.)
+
+#I don't trust the BS data b/c only 1 of 50 plots had waterdepth>0
+data.frame(PP_PN_PT_TT_TN_BS%>%filter(WaterDepthcm>0))
+length(PP_PN_PT_TT_TN_BS$WaterDepthcm)
 
 #Stats on all years
 b1 <- glm(PtoNTandTtoN ~ WaterDepthcm, family = binomial(link="logit"), data = PP_PN_PT_TT_TN_BP, na.action=na.exclude)#23 1s of 62
@@ -762,16 +783,28 @@ sum(PP_PN_PT_TT_TN_PR$PtoNTandTtoN);length(PP_PN_PT_TT_TN_PR$PtoNTandTtoN)
 
 ##### Four panel transition plot #####
 
-salwatlegend<-ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,color=Site)) +
+salwatlegend<-
+  ggplot(data = PP_PN_PT_TT_TN, aes(x = WaterDepthcm, y = PtoNTandTtoN,fill=Site,color=Site)) +#color=Site
   theme_classic()+
   theme(line=element_line(linewidth =.3),axis.text=element_text(size=9),axis.title = element_text(size = 10),strip.background = element_rect(colour="white", fill="white"),strip.text.x = element_text(size=10,hjust=0,vjust = 1, margin=margin(l=0)),axis.line=element_line())+
+  theme(legend.text=element_text(size=8))+
+  theme(legend.spacing.x = unit(.30, 'cm'))+
+  #guides(fill = guide_legend(byrow = TRUE)) +
+  #theme(legend.key.spacing.y=unit(.1,'cm'))+
   geom_point(size=0.8)+
-  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=0.5)
+  geom_smooth(method='glm',method.args=list(family='binomial'),se=F,size=0.5)+
+  theme(legend.spacing.y = unit(-1.5, 'mm')) + 
+  guides(fill = guide_legend(byrow = TRUE))
+#to use the legend.spacing.y you need to you use "fill=Site" not color=Site in the iniitial aes, i have no idea why this matters
 
-pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Manuscripts/Temporal/Figs/FourPanelTransitionPlot.pdf",width=12.4,height=3)#4.8
+
+#need to mess with plot margins to get this nicer
+pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAmarsh/Survey/Manuscripts/Temporal/Figs/FourPanelTransitionPlot.pdf",width=6,height=4)#width=12.4,height=3
 legend <- cowplot::get_legend(salwatlegend)
-plot_grid(salphrag,salnat,get_legend(salphrag),watphrag,watnat,legend,nrow = 2,ncol=3,labels=c("a) Toward Phragmites dominance","b) Toward native dominance","","c) Toward Phragmites dominance","d) Toward native dominance"),label_size=10,hjust=-.17,vjust=1.2,scale=.9,label_fontface = "plain")
+plot_grid(salphrag,salnat,get_legend(salphrag),watphrag,watnat,legend,nrow = 2,ncol=3,labels=c("a) Toward Phragmites dominance","b) Toward native dominance","","c) Toward Phragmites dominance","d) Toward native dominance"),label_size=10,hjust=-.17,vjust=1.2,scale=1,label_fontface = "plain",rel_widths=c(1,1,.5))
 dev.off()
+
+
 
 
 #Trying a few sites (not bayou sauvage) with both water depth and salinity, things are similar except not sig at bayou sauvage
